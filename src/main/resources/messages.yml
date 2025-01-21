@@ -1,0 +1,8 @@
+plugin-prefix: "&7[MazeGenerator] &r"
+
+job-started: "&lMaze construction &bstarted."
+job-done: "&lMaze construction &bfinished."
+job-status: "&lMaze construction is at &b%percentage%%"
+job-status-low-memory: "&lMaze construction &bongoing.&r&lCannot display progress in low-memory mode."
+command-error: "&lSome parameters contain &billegal values!"
+generation-done: "&lMaze generation took &b%time% seconds"

@@ -1,0 +1,106 @@
+desert:
+  floor:
+    SANDSTONE: 20
+    RED_SANDSTONE: 10
+    CRYING_OBSIDIAN: 2
+    OBSIDIAN: 1
+    TERRACOTTA: 2
+  wall:
+    SAND: 40
+    CHISELED_SANDSTONE: 20
+    CHISELED_RED_SANDSTONE: 10
+    ORANGE_TERRACOTTA: 5
+    YELLOW_TERRACOTTA: 5
+    RED_TERRACOTTA: 2
+  top:
+    SANDSTONE: 3
+    RED_SANDSTONE: 2
+    END_STONE: 1
+forest:
+  floor:
+    GRASS_BLOCK: 20
+    COARSE_DIRT: 10
+    PODZOL: 5
+    MOSSY_COBBLESTONE: 2
+    DIRT: 2
+  wall:
+    OAK_LOG: 30
+    OAK_LEAVES: 25
+    SPRUCE_LOG: 15
+    BIRCH_LOG: 10
+    DARK_OAK_LOG: 5
+    FERN: 5
+  top:
+    OAK_LOG: 3
+    SPRUCE_LOG: 2
+    BIRCH_LOG: 1
+snowy:
+  floor:
+    SNOW_BLOCK: 25
+    ICE: 10
+    PACKED_ICE: 5
+    BLUE_ICE: 2
+    FROSTED_ICE: 1
+  wall:
+    SNOW_BLOCK: 40
+    WHITE_WOOL: 20
+    WHITE_CONCRETE: 10
+    WHITE_TERRACOTTA: 5
+    LIGHT_GRAY_CONCRETE: 2
+  top:
+    SNOW_BLOCK: 3
+    WHITE_CONCRETE: 2
+    LIGHT_GRAY_WOOL: 1
+ocean:
+  floor:
+    SAND: 20
+    GRAVEL: 10
+    CLAY: 5
+    PRISMARINE: 2
+    DARK_PRISMARINE: 1
+  wall:
+    BLUE_WOOL: 50
+    GREEN_WOOL: 20
+    GREEN_CONCRETE: 10
+    FIRE_CORAL: 5
+    SPONGE: 2
+  top:
+    PRISMARINE: 3
+    DARK_PRISMARINE: 2
+    SEA_LANTERN: 1
+mountain:
+  floor:
+    STONE: 20
+    GRASS_BLOCK: 10
+    GRAVEL: 5
+    ANDESITE: 2
+    POLISHED_ANDESITE: 1
+  wall:
+    STONE: 30
+    COBBLESTONE: 20
+    MOSSY_COBBLESTONE: 10
+    DIORITE: 5
+    GRANITE: 5
+    POLISHED_GRANITE: 2
+  top:
+    STONE: 3
+    COBBLESTONE: 2
+    POLISHED_DIORITE: 1
+jungle:
+  floor:
+    GRASS_BLOCK: 20
+    DIRT: 10
+    PODZOL: 5
+    COARSE_DIRT: 2
+    JUNGLE_PLANKS: 1
+  wall:
+    JUNGLE_LOG: 30
+    JUNGLE_LEAVES: 25
+    MELON: 15
+    JUNGLE_PLANKS: 10
+    BROWN_MUSHROOM_BLOCK: 5
+    GREEN_TERRACOTTA: 2
+  top:
+    JUNGLE_LOG: 3
+    JUNGLE_PLANKS: 2
+    MOSSY_COBBLESTONE: 1
