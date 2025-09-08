@@ -1,0 +1,16 @@
+millis-per-tick: 6
+jobs-batch-cells: 256
+# Whether to attach CustomBlockData to placed blocks (costly). Default false for performance.
+set-block-data: false
+
+autotune:
+  enabled: true
+  min-millis-per-tick: 2
+  max-millis-per-tick: 12
+  increase-step: 1
+  decrease-step: 1
+  spare-high: 12   # if last tick had >= spare-high ms free, increase budget
+  spare-low: 6     # if last tick had < spare-low ms free, decrease budget
+
+# Fill walls first, then carve (faster feedback, more consistent visuals)
+defer-wall-fill: false
