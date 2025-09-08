@@ -1,7 +1,6 @@
 package it.nicoloscialpi.mazegenerator.loadbalancer;
 
 import it.nicoloscialpi.mazegenerator.MessageFileReader;
-import it.nicoloscialpi.mazegenerator.maze.MazePlacer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -14,30 +13,45 @@ public class LoadBalancer extends BukkitRunnable {
 
     private static TickEventListener eventListener = null;
 
-    private static final int MAX_MILLIS_PER_TICK = 5;
     public static long LAST_TICK_START_TIME = 0;
 
     private final ArrayDeque<LoadBalancerJob> jobs;
     private final Semaphore mutex;
     private final JavaPlugin plugin;
-    private final MazePlacer mazePlacer;
+    private final JobProducer jobProducer;
     private boolean isDone;
 
     private long iterations;
 
     private final CommandSender commandSender;
+    private int currentMillisPerTick;
+    private final boolean autoTune;
+    private final int minMillisPerTick;
+    private final int maxMillisPerTick;
+    private final int incStep;
+    private final int decStep;
+    private final int spareHigh;
+    private final int spareLow;
 
-    public LoadBalancer(JavaPlugin plugin, CommandSender commandSender, MazePlacer mazePlacer) {
+    public LoadBalancer(JavaPlugin plugin, CommandSender commandSender, JobProducer jobProducer) {
         this.plugin = plugin;
-        this.mazePlacer = mazePlacer;
+        this.jobProducer = jobProducer;
         if (eventListener == null) {
             eventListener = new TickEventListener(plugin);
         }
         this.commandSender = commandSender;
         this.mutex = new Semaphore(1);
-        jobs = new ArrayDeque<>();
-        iterations = 0;
+        this.jobs = new ArrayDeque<>();
+        this.iterations = 0;
         this.isDone = false;
+        this.currentMillisPerTick = Math.max(1, plugin.getConfig().getInt("millis-per-tick", 6));
+        this.autoTune = plugin.getConfig().getBoolean("autotune.enabled", true);
+        this.minMillisPerTick = Math.max(1, plugin.getConfig().getInt("autotune.min-millis-per-tick", 2));
+        this.maxMillisPerTick = Math.max(this.currentMillisPerTick, plugin.getConfig().getInt("autotune.max-millis-per-tick", 12));
+        this.incStep = Math.max(1, plugin.getConfig().getInt("autotune.increase-step", 1));
+        this.decStep = Math.max(1, plugin.getConfig().getInt("autotune.decrease-step", 1));
+        this.spareHigh = Math.max(0, plugin.getConfig().getInt("autotune.spare-high", 12));
+        this.spareLow = Math.max(0, plugin.getConfig().getInt("autotune.spare-low", 6));
     }
 
     public synchronized boolean isDone() {
@@ -47,9 +61,16 @@ public class LoadBalancer extends BukkitRunnable {
     public synchronized void start() {
         if (commandSender != null) {
             commandSender.sendMessage(MessageFileReader.getMessage("job-started"));
-            jobs.addAll(mazePlacer.getJobs());
         }
+        jobs.addAll(jobProducer.getJobs());
         runTaskTimer(plugin, 0L, 1L);
+    }
+
+    public static synchronized void shutdown() {
+        if (eventListener != null) {
+            eventListener.unregister();
+            eventListener = null;
+        }
     }
 
     @Override
@@ -62,26 +83,49 @@ public class LoadBalancer extends BukkitRunnable {
                 this.cancel();
                 return;
             }
-            long stopTime = System.currentTimeMillis() + MAX_MILLIS_PER_TICK;
-            mutex.acquire();
-            if (stopTime < LAST_TICK_START_TIME + 50) {
-                if (jobs.isEmpty()) {
-                    isDone = true;
-                    return;
+
+            // Auto-tune budget based on last tick spare time (Paper tick is ~50ms)
+            if (autoTune && LAST_TICK_START_TIME > 0) {
+                long sinceTickStart = System.currentTimeMillis() - LAST_TICK_START_TIME;
+                long spare = 50 - sinceTickStart; // ms left in this tick window
+                if (spare >= spareHigh) {
+                    currentMillisPerTick = Math.min(maxMillisPerTick, currentMillisPerTick + incStep);
+                } else if (spare < spareLow) {
+                    currentMillisPerTick = Math.max(minMillisPerTick, currentMillisPerTick - decStep);
                 }
-                while (!jobs.isEmpty() && System.currentTimeMillis() <= stopTime) {
-                    LoadBalancerJob poll = jobs.poll();
-                    if (poll != null) {
-                        poll.compute();
-                        iterations++;
-                        if (commandSender != null && iterations % 100000 == 0) {
-                            double percentage = mazePlacer.getProgressPercentage();
-                            commandSender.sendMessage(MessageFileReader.getMessage("job-status").replace("%percentage%", percentage + " " + mazePlacer.getLmLastR() + " " + mazePlacer.getLmLastC()));
-                        }
+            }
+
+            long stopTime = System.currentTimeMillis() + currentMillisPerTick;
+            mutex.acquire();
+
+            // Consume jobs within the time budget
+            while (!jobs.isEmpty() && System.currentTimeMillis() <= stopTime) {
+                LoadBalancerJob job = jobs.poll();
+                if (job != null) {
+                    job.compute();
+                    iterations++;
+                    if (commandSender != null && (iterations % 5000 == 0)) {
+                        double percentage = jobProducer.getProgressPercentage();
+                        commandSender.sendMessage(
+                                MessageFileReader.getMessage("job-status")
+                                        .replace("%percentage%", String.format("%.2f", percentage))
+                        );
                     }
                 }
-                jobs.addAll(mazePlacer.getJobs());
             }
+
+            // Top-up jobs if queue is low
+            if (jobs.isEmpty()) {
+                List<LoadBalancerJob> next = jobProducer.getJobs();
+                if (next.isEmpty()) {
+                    if (jobs.isEmpty()) {
+                        isDone = true;
+                    }
+                } else {
+                    jobs.addAll(next);
+                }
+            }
+
             mutex.release();
         } catch (Exception e) {
             e.printStackTrace();

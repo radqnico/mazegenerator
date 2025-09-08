@@ -11,69 +11,64 @@ public class Theme {
     private final HashMap<Material, Integer> wallMaterialWeight;
     private final HashMap<Material, Integer> topMaterialWeight;
 
+    // Precomputed pickers for performance
+    private Material[] floorMaterials; private int[] floorCum; private int floorTotal = 0; private boolean floorDirty = true;
+    private Material[] wallMaterials; private int[] wallCum; private int wallTotal = 0; private boolean wallDirty = true;
+    private Material[] topMaterials; private int[] topCum; private int topTotal = 0; private boolean topDirty = true;
+
     public Theme() {
         floorMaterialWeight = new HashMap<>();
         wallMaterialWeight = new HashMap<>();
         topMaterialWeight = new HashMap<>();
     }
 
-    public Material getRandomMaterial(HashMap<Material, Integer> materialIntegerHashMap) {
-        if (materialIntegerHashMap.isEmpty()) {
-            return Material.STONE;
+    private static final java.util.Random RNG = new java.util.Random();
+
+    private void buildPicker(HashMap<Material, Integer> map, Picker p) {
+        if (map.isEmpty()) { p.materials = null; p.cum = null; p.total = 0; return; }
+        ArrayList<Map.Entry<Material, Integer>> list = new ArrayList<>(map.entrySet());
+        list.sort(Comparator.comparingInt(Map.Entry::getValue));
+        int[] cum = new int[list.size()];
+        Material[] mats = new Material[list.size()];
+        int running = 0; int i = 0;
+        for (Map.Entry<Material, Integer> e : list) {
+            running += Math.max(1, e.getValue());
+            mats[i] = e.getKey();
+            cum[i] = running;
+            i++;
         }
+        p.materials = mats; p.cum = cum; p.total = running;
+    }
 
-        ArrayList<Map.Entry<Material, Integer>> entryList = new ArrayList<>(materialIntegerHashMap.entrySet());
-        ArrayList<Map.Entry<Material, Integer>> cumulativeEntryList = new ArrayList<>();
-        ArrayList<Map.Entry<Material, Double>> cumulativeNormalizedEntryList = new ArrayList<>();
+    private Material pick(Picker p) {
+        if (p.total <= 0 || p.materials == null) return Material.STONE;
+        int r = RNG.nextInt(p.total);
+        int idx = java.util.Arrays.binarySearch(p.cum, r + 1);
+        if (idx < 0) idx = -idx - 1;
+        if (idx < 0) idx = 0; if (idx >= p.materials.length) idx = p.materials.length - 1;
+        return p.materials[idx];
+    }
 
+    private static class Picker { Material[] materials; int[] cum; int total; }
 
-        int totalWeight = 0;
-        entryList.sort(Comparator.comparingInt(Map.Entry::getValue));
-        for (Map.Entry<Material, Integer> entry : entryList) {
-            cumulativeEntryList.add(new AbstractMap.SimpleEntry<>(entry.getKey(), totalWeight));
-            totalWeight += entry.getValue();
+    private final Picker floorPicker = new Picker();
+    private final Picker wallPicker = new Picker();
+    private final Picker topPicker = new Picker();
+
+    public Material getRandomMaterial(HashMap<Material, Integer> materialIntegerHashMap, Picker picker, boolean dirtyFlag) {
+        if (dirtyFlag) {
+            buildPicker(materialIntegerHashMap, picker);
         }
-
-        for (Map.Entry<Material, Integer> entry : cumulativeEntryList) {
-            cumulativeNormalizedEntryList.add(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue() / (double) totalWeight));
-        }
-
-        int size = cumulativeNormalizedEntryList.size();
-        double random = Math.random();
-        for (int i = 1; i < size; i++) {
-            Map.Entry<Material, Double> materialDoubleEntry = cumulativeNormalizedEntryList.get(i);
-            Map.Entry<Material, Double> materialDoubleEntryPrevious = cumulativeNormalizedEntryList.get(i - 1);
-            if (random < materialDoubleEntry.getValue()) {
-                return materialDoubleEntryPrevious.getKey();
-            }
-        }
-
-        return cumulativeNormalizedEntryList.get(cumulativeNormalizedEntryList.size() - 1).getKey();
+        return pick(picker);
     }
 
-    public Material getRandomFloorMaterial() {
-        return getRandomMaterial(floorMaterialWeight);
-    }
+    public Material getRandomFloorMaterial() { if (floorDirty) { buildPicker(floorMaterialWeight, floorPicker); floorDirty = false; } return pick(floorPicker); }
+    public Material getRandomWallMaterial() { if (wallDirty) { buildPicker(wallMaterialWeight, wallPicker); wallDirty = false; } return pick(wallPicker); }
+    public Material getRandomTopMaterial() { if (topDirty) { buildPicker(topMaterialWeight, topPicker); topDirty = false; } return pick(topPicker); }
 
-    public Material getRandomWallMaterial() {
-        return getRandomMaterial(wallMaterialWeight);
-    }
-
-    public Material getRandomTopMaterial() {
-        return getRandomMaterial(topMaterialWeight);
-    }
-
-    public void addFloorMaterialWeight(Material material, int weight) {
-        floorMaterialWeight.put(material, weight);
-    }
-
-    public void addWallMaterialWeight(Material material, int weight) {
-        wallMaterialWeight.put(material, weight);
-    }
-
-    public void addTopMaterialWeight(Material material, int weight) {
-        topMaterialWeight.put(material, weight);
-    }
+    public void addFloorMaterialWeight(Material material, int weight) { floorMaterialWeight.put(material, weight); floorDirty = true; }
+    public void addWallMaterialWeight(Material material, int weight) { wallMaterialWeight.put(material, weight); wallDirty = true; }
+    public void addTopMaterialWeight(Material material, int weight) { topMaterialWeight.put(material, weight); topDirty = true; }
 
     public void insertBySectionName(String sectionName, Material material, int weight) {
         String sectionNameLowerCase = sectionName.toLowerCase();

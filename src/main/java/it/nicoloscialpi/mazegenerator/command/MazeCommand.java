@@ -1,194 +1,161 @@
 package it.nicoloscialpi.mazegenerator.command;
 
-import com.google.common.util.concurrent.AtomicDouble;
 import it.nicoloscialpi.mazegenerator.MessageFileReader;
 import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer;
-import it.nicoloscialpi.mazegenerator.maze.MazeGenerator;
-import it.nicoloscialpi.mazegenerator.maze.MazePlacer;
+import it.nicoloscialpi.mazegenerator.maze.MazeStreamPlacer;
 import it.nicoloscialpi.mazegenerator.themes.Theme;
 import it.nicoloscialpi.mazegenerator.themes.Themes;
 import org.bukkit.Location;
-import org.bukkit.block.Biome;
+import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
+import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.*;
 
 public class MazeCommand implements CommandExecutor, TabCompleter {
-    private static final List<String> acceptableArguments = Arrays.asList(
-            "x",
-            "y",
-            "z",
-            "world",
-            "mazeSizeX",
-            "mazeSizeZ",
-            "cellSize",
-            "wallHeight",
-            "hasExits",
-            "additionalExits",
-            "hasRoom",
-            "roomSizeX",
-            "roomSizeZ",
-            "maxMemoryGigabytes",
-            "erosion",
-            "closed",
-            "hollow",
-            "themeName"
+
+    private static final List<String> ACCEPTABLE_ARGS = Arrays.asList(
+            "x","y","z","world",
+            "mazeSizeX","mazeSizeZ",
+            "cellSize","wallHeight",
+            "hasExits","additionalExits",
+            "hasRoom","roomSizeX","roomSizeZ",
+            "erosion","closed","hollow","themeName"
     );
+
     private final JavaPlugin plugin;
 
-    public MazeCommand(JavaPlugin plugin) {
-        this.plugin = plugin;
+    public MazeCommand(JavaPlugin plugin) { this.plugin = plugin; }
+
+    private static class MazeOptions {
+        int x, y, z;
+        String world = "world";
+        int mazeSizeX = 5, mazeSizeZ = 5;
+        int cellSize = 1, wallHeight = 3;
+        boolean hasExits = false; int additionalExits = 0;
+        boolean hasRoom = false; int roomSizeX = 3, roomSizeZ = 3;
+        double erosion = 0.0; boolean closed = false; boolean hollow = false;
+        String themeName = "desert";
+    }
+
+    private MazeOptions parseOptions(CommandSender sender, String[] args) {
+        MazeOptions opt = new MazeOptions();
+        if (sender instanceof Player p) {
+            Location l = p.getLocation();
+            opt.x = l.getBlockX(); opt.y = l.getBlockY(); opt.z = l.getBlockZ();
+            opt.world = p.getWorld().getName();
+        }
+        CommandArgumentsParser p = new CommandArgumentsParser(new ArrayList<>(Arrays.asList(args)));
+        p.getInt("x").ifPresent(v -> opt.x = v);
+        p.getInt("y").ifPresent(v -> opt.y = v);
+        p.getInt("z").ifPresent(v -> opt.z = v);
+        p.getInt("mazeSizeX").ifPresent(v -> opt.mazeSizeX = v);
+        p.getInt("mazeSizeZ").ifPresent(v -> opt.mazeSizeZ = v);
+        p.getInt("cellSize").ifPresent(v -> opt.cellSize = v);
+        p.getInt("wallHeight").ifPresent(v -> opt.wallHeight = v);
+        p.getBool("hasExits").ifPresent(v -> opt.hasExits = v);
+        p.getInt("additionalExits").ifPresent(v -> opt.additionalExits = v);
+        p.getBool("hasRoom").ifPresent(v -> opt.hasRoom = v);
+        p.getInt("roomSizeX").ifPresent(v -> opt.roomSizeX = v);
+        p.getInt("roomSizeZ").ifPresent(v -> opt.roomSizeZ = v);
+        p.getDouble("erosion").ifPresent(v -> opt.erosion = v);
+        p.getString("world").ifPresent(v -> opt.world = v);
+        p.getString("themeName").ifPresent(v -> opt.themeName = v);
+        p.getBool("closed").ifPresent(v -> opt.closed = v);
+        p.getBool("hollow").ifPresent(v -> opt.hollow = v);
+        return opt;
+    }
+
+    private Optional<String> validate(MazeOptions o, CommandSender sender) {
+        if (o.mazeSizeX < 1 || o.mazeSizeZ < 1) return Optional.of("Invalid maze size");
+        if (o.cellSize < 1 || o.wallHeight < 1) return Optional.of("Invalid cellSize/wallHeight");
+        if (o.erosion < 0.0 || o.erosion > 1.0) return Optional.of("Erosion must be in [0,1]");
+        World w = sender.getServer().getWorld(o.world);
+        if (w == null) return Optional.of("World not found: " + o.world);
+        return Optional.empty();
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, @NotNull String[] strings) {
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
+        if (!sender.hasPermission("mazegenerator.maze")) return false;
 
-        if (!commandSender.hasPermission("mazegenerator.maze")) {
-            return false;
+        // Normal generation
+        MazeOptions opt = parseOptions(sender, args);
+        Optional<String> err = validate(opt, sender);
+        if (err.isPresent()) {
+            sender.sendMessage(MessageFileReader.getMessage("command-error"));
+            return true;
         }
-
-        AtomicInteger x = new AtomicInteger();
-        AtomicInteger y = new AtomicInteger();
-        AtomicInteger z = new AtomicInteger();
-        AtomicInteger mazeSizeX = new AtomicInteger(5);
-        AtomicInteger mazeSizeZ = new AtomicInteger(5);
-        AtomicInteger cellSize = new AtomicInteger(1);
-        AtomicInteger wallHeight = new AtomicInteger(3);
-        AtomicBoolean hasExits = new AtomicBoolean(false);
-        AtomicInteger additionalExits = new AtomicInteger(0);
-        AtomicBoolean hasRoom = new AtomicBoolean(false);
-        AtomicInteger roomSizeX = new AtomicInteger(3);
-        AtomicInteger roomSizeZ = new AtomicInteger(3);
-        AtomicDouble maxMemory = new AtomicDouble(0);
-
-        AtomicDouble erosion = new AtomicDouble(0);
-        AtomicBoolean closed = new AtomicBoolean(false);
-        AtomicBoolean hollow = new AtomicBoolean(false);
-        AtomicReference<String> world = new AtomicReference<>("world");
-        AtomicReference<String> themeName = new AtomicReference<>("themeName");
-
-
-        if (commandSender instanceof Player) {
-            Player player = (Player) commandSender;
-            x.set(player.getLocation().getBlockX());
-            y.set(player.getLocation().getBlockY());
-            z.set(player.getLocation().getBlockZ());
-            world.set(player.getWorld().getName());
-        }
-        ArrayList<String> arguments = new ArrayList<>(Arrays.asList(strings));
-
-        CommandArgumentsParser commandArgumentsParser = new CommandArgumentsParser(arguments);
-
-        commandArgumentsParser.getInt("x").ifPresent(x::set);
-        commandArgumentsParser.getInt("y").ifPresent(y::set);
-        commandArgumentsParser.getInt("z").ifPresent(z::set);
-        commandArgumentsParser.getInt("mazeSizeX").ifPresent(mazeSizeX::set);
-        commandArgumentsParser.getInt("mazeSizeZ").ifPresent(mazeSizeZ::set);
-        commandArgumentsParser.getInt("cellSize").ifPresent(cellSize::set);
-        commandArgumentsParser.getInt("wallHeight").ifPresent(wallHeight::set);
-        commandArgumentsParser.getBool("hasExits").ifPresent(hasExits::set);
-        commandArgumentsParser.getInt("additionalExits").ifPresent(additionalExits::set);
-        commandArgumentsParser.getBool("hasRoom").ifPresent(hasRoom::set);
-        commandArgumentsParser.getInt("roomSizeX").ifPresent(roomSizeX::set);
-        commandArgumentsParser.getInt("roomSizeZ").ifPresent(roomSizeZ::set);
-        commandArgumentsParser.getDouble("maxMemoryGigabytes").ifPresent(maxMemory::set);
-
-        commandArgumentsParser.getDouble("erosion").ifPresent(erosion::set);
-        commandArgumentsParser.getString("world").ifPresent(world::set);
-        commandArgumentsParser.getString("themeName").ifPresent(themeName::set);
-        commandArgumentsParser.getBool("closed").ifPresent(closed::set);
-        commandArgumentsParser.getBool("hollow").ifPresent(hollow::set);
-
-        plugin.getLogger().info(commandArgumentsParser.toString());
 
         try {
-            MazeGenerator generator = new MazeGenerator(mazeSizeX.get(), mazeSizeZ.get());
-            byte[][] generateMaze = generator.generateMaze(
-                    additionalExits.get(),
-                    erosion.get(),
-                    hasRoom.get(),
-                    roomSizeX.get(),
-                    roomSizeZ.get(),
-                    hasExits.get()
+            Theme theme = Themes.getTheme(opt.themeName);
+            Location origin = new Location(sender.getServer().getWorld(opt.world), opt.x, opt.y, opt.z);
+            MazeStreamPlacer streamPlacer = new MazeStreamPlacer(
+                    theme,
+                    origin,
+                    opt.wallHeight,
+                    opt.cellSize,
+                    opt.closed,
+                    opt.hollow,
+                    opt.mazeSizeX,
+                    opt.mazeSizeZ,
+                    opt.additionalExits,
+                    opt.erosion,
+                    opt.hasRoom,
+                    opt.roomSizeX,
+                    opt.roomSizeZ,
+                    opt.hasExits
             );
-            commandSender.sendMessage(MessageFileReader.getMessage("generation-done").replaceAll("%time%", String.valueOf(MazeGenerator.getLastGenerationMillis() / 1000.0)));
-            Theme theme = Themes.getTheme(themeName.get());
-            MazePlacer mazePlacer = new MazePlacer(theme,
-                    generateMaze,
-                    new Location(commandSender.getServer().getWorld(world.get()), x.get(), y.get(), z.get()),
-                    wallHeight.get(),
-                    cellSize.get(),
-                    closed.get(),
-                    hollow.get(),
-                    maxMemory.get()
-            );
-
-            LoadBalancer loadBalancer = new LoadBalancer(plugin, commandSender, mazePlacer);
-            loadBalancer.start();
-
+            LoadBalancer lb = new LoadBalancer(plugin, sender, streamPlacer);
+            lb.start();
         } catch (Exception e) {
-            commandSender.sendMessage(MessageFileReader.getMessage("command-error"));
-            commandSender.getServer().getLogger().severe(e.toString());
+            sender.sendMessage(MessageFileReader.getMessage("command-error"));
+            sender.getServer().getLogger().severe(e.toString());
         }
-
         return true;
     }
 
-
     @Override
-    public @Nullable List<String> onTabComplete(@NotNull CommandSender commandSender, @NotNull Command command, @NotNull String s, @NotNull String[] strings) {
+    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+        List<String> suggestions = new ArrayList<>(ACCEPTABLE_ARGS);
+        String last = args.length > 0 ? args[args.length - 1] : "";
 
-        final List<String> suggestions = new ArrayList<>(acceptableArguments);
-
-        if (strings.length > 0 && commandSender instanceof Player player) {
-            Block targetBlockExact = player.getTargetBlockExact(10);
-            if (targetBlockExact != null) {
-                String last = strings[strings.length - 1];
-                switch (last.toLowerCase()) {
-                    case "x:" -> {
-                        suggestions.clear();
-                        suggestions.add(last + targetBlockExact.getX());
-                        return suggestions;
-                    }
-                    case "y:" -> {
-                        suggestions.clear();
-                        suggestions.add(last + targetBlockExact.getY());
-                        return suggestions;
-                    }
-                    case "z:" -> {
-                        suggestions.clear();
-                        suggestions.add(last + targetBlockExact.getZ());
-                        return suggestions;
-                    }
-                }
-            }
+        for (String a : args) {
+            String[] kv = a.split(":", 2);
+            if (kv.length > 0) suggestions.remove(kv[0]);
         }
 
-        for (String argument : strings) {
-            for (String acceptableArgument : acceptableArguments) {
-                String[] split = argument.split(":");
-                if (split.length == 0) {
-                    continue;
-                }
-                if (split[0].equalsIgnoreCase(acceptableArgument)) {
-                    suggestions.remove(acceptableArgument);
-                }
+        if (last.contains(":")) {
+            String key = last.substring(0, last.indexOf(":"));
+            suggestions.clear();
+            switch (key.toLowerCase()) {
+                case "x": case "y": case "z":
+                    if (sender instanceof Player p) {
+                        Block b = p.getTargetBlockExact(10);
+                        if (b != null) {
+                            suggestions.add("x:" + b.getX());
+                            suggestions.add("y:" + b.getY());
+                            suggestions.add("z:" + b.getZ());
+                        }
+                    }
+                    break;
+                case "world":
+                    sender.getServer().getWorlds().forEach(w -> suggestions.add("world:" + w.getName()));
+                    break;
+                case "themename":
+                    Themes.getThemes().keySet().forEach(t -> suggestions.add("themeName:" + t));
+                    break;
+                default:
+                    break;
             }
+            return suggestions;
         }
 
-        return suggestions.stream().map(arg -> arg + ":").toList();
+        suggestions.replaceAll(k -> k + ":");
+        return suggestions;
     }
 }

@@ -16,6 +16,7 @@ public final class MazeGeneratorPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         plugin = this;
+        saveDefaultConfig();
         Objects.requireNonNull(getCommand("maze")).setExecutor(new MazeCommand(this));
         Themes.parseThemesFromReader(
                 new ThemeConfigurationReader(this, "themes.yml")
@@ -28,7 +29,9 @@ public final class MazeGeneratorPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        // Cancel tasks and unregister listeners
+        getServer().getScheduler().cancelTasks(this);
+        it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.shutdown();
     }
 
     @Override
