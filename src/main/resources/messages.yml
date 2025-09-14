@@ -7,3 +7,5 @@ job-status-low-memory: "&lMaze construction &bongoing.&r&lCannot display progres
 command-error: "&lSome parameters contain &billegal values!"
 generation-done: "&lMaze generation took &b%time% seconds"
 job-stopped: "&lMaze construction &cstopped."
+no-permission: "&cYou don't have permission to do that."
+config-reloaded: "&aMazeGenerator configuration reloaded."
