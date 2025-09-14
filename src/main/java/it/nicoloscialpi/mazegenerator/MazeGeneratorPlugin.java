@@ -17,7 +17,10 @@ public final class MazeGeneratorPlugin extends JavaPlugin {
     public void onEnable() {
         plugin = this;
         saveDefaultConfig();
-        Objects.requireNonNull(getCommand("maze")).setExecutor(new MazeCommand(this));
+        // Register command executor and tab-completer
+        MazeCommand mazeCommand = new MazeCommand(this);
+        Objects.requireNonNull(getCommand("maze")).setExecutor(mazeCommand);
+        Objects.requireNonNull(getCommand("maze")).setTabCompleter(mazeCommand);
         Themes.parseThemesFromReader(
                 new ThemeConfigurationReader(this, "themes.yml")
         );

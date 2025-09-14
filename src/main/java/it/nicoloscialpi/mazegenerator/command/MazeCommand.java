@@ -64,7 +64,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         p.getInt("roomSizeZ").ifPresent(v -> opt.roomSizeZ = v);
         p.getDouble("erosion").ifPresent(v -> opt.erosion = v);
         p.getString("world").ifPresent(v -> opt.world = v);
-        p.getString("themeName").ifPresent(v -> opt.themeName = v);
+        p.getString("themeName").ifPresent(v -> opt.themeName = v.toLowerCase(Locale.ROOT));
         p.getBool("closed").ifPresent(v -> opt.closed = v);
         p.getBool("hollow").ifPresent(v -> opt.hollow = v);
         return opt;
@@ -83,11 +83,25 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
         if (!sender.hasPermission("mazegenerator.maze")) return false;
 
+        // Subcommand: stop
+        if (args.length > 0 && args[0].equalsIgnoreCase("stop")) {
+            it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.stopAll();
+            sender.sendMessage(MessageFileReader.getMessage("job-stopped"));
+            return true;
+        }
+
+        // Subcommand: help
+        if (args.length > 0 && args[0].equalsIgnoreCase("help")) {
+            sendHelp(sender);
+            return true;
+        }
+
         // Normal generation
         MazeOptions opt = parseOptions(sender, args);
         Optional<String> err = validate(opt, sender);
         if (err.isPresent()) {
             sender.sendMessage(MessageFileReader.getMessage("command-error"));
+            sender.sendMessage("Reason: " + err.get());
             return true;
         }
 
@@ -108,7 +122,8 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     opt.hasRoom,
                     opt.roomSizeX,
                     opt.roomSizeZ,
-                    opt.hasExits
+                    opt.hasExits,
+                    false
             );
             LoadBalancer lb = new LoadBalancer(plugin, sender, streamPlacer);
             lb.start();
@@ -117,6 +132,33 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             sender.getServer().getLogger().severe(e.toString());
         }
         return true;
+    }
+
+    private void sendHelp(CommandSender sender) {
+        String[] lines = new String[]{
+                "--- MazeGenerator Help ---",
+                "Usage: /maze key:value [key:value ...]",
+                "Subcommands: /maze help, /maze stop",
+                "",
+                "Core keys:",
+                "  x,y,z,world          -> placement origin",
+                "  mazeSizeX,mazeSizeZ  -> maze size in cells (odd enforced)",
+                "  cellSize,wallHeight  -> cell footprint and wall height",
+                "  hasExits,additionalExits,hasRoom,roomSizeX,roomSizeZ",
+                "  erosion              -> 0..1 occasional holes",
+                "  closed,hollow        -> roof over paths / shell walls",
+                "  themeName            -> theme from themes.yml",
+                "",
+                "Examples:",
+                "  /maze mazeSizeX:51 mazeSizeZ:51 cellSize:2 wallHeight:4 themeName:forest",
+                "  /maze world:world_nether x:100 y:80 z:-200 mazeSizeX:41 mazeSizeZ:41 themeName:snowy",
+                "",
+                "Tips:",
+                "  - Use hollow:true and larger cellSize to reduce blocks",
+                "  - Tweak config.yml (millis-per-tick, jobs-batch-cells) to protect TPS",
+                "  - /maze stop cancels active builds"
+        };
+        for (String line : lines) sender.sendMessage(line);
     }
 
     @Override
@@ -155,7 +197,21 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             return suggestions;
         }
 
-        suggestions.replaceAll(k -> k + ":");
-        return suggestions;
+        // Build final list: key suggestions with ':' plus optional 'stop'/'help' subcommands
+        List<String> out = new ArrayList<>();
+        for (String k : suggestions) {
+            out.add(k + ":");
+        }
+        // Suggest 'stop' only for the first token (no key:value yet)
+        if (args.length == 0 || (args.length == 1 && !last.contains(":"))) {
+            String lastLower = last.toLowerCase();
+            if (last.isEmpty() || "stop".startsWith(lastLower)) {
+                out.add("stop");
+            }
+            if (last.isEmpty() || "help".startsWith(lastLower)) {
+                out.add("help");
+            }
+        }
+        return out;
     }
 }

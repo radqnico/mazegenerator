@@ -65,7 +65,7 @@ public class ThemeConfigurationReader {
                         continue;
                     }
                     if (materialWeight == -1) {
-                        plugin.getLogger().warning("Material '\" + keyL2 + \"' is ok but weight'" + materialWeight + "' is NOT valid, skipping");
+                        plugin.getLogger().warning("Material '" + keyL2 + "' is valid but weight '" + materialWeight + "' is NOT valid, skipping");
                         continue;
                     }
                     theme.insertBySectionName(keyL1.toLowerCase(), matchMaterial, materialWeight);

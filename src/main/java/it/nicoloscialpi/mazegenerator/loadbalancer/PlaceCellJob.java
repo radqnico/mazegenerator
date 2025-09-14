@@ -11,7 +11,7 @@ import com.jeff_media.customblockdata.CustomBlockData;
 
 import static it.nicoloscialpi.mazegenerator.maze.MazeGenerator.WALL;
 
-public class PlaceCellJob implements LoadBalancerJob {
+public class PlaceCellJob implements LoadBalancerJob, RegionTask {
 
     private final int worldX;
     private final int worldY;
@@ -42,6 +42,7 @@ public class PlaceCellJob implements LoadBalancerJob {
 
     @Override
     public void compute() {
+        // Vanilla placement path (thread-safe on server thread)
         // Floor at y=0 relative
         int y = 0;
         for (int x = 0; x < cellSize; x++) {
@@ -98,4 +99,13 @@ public class PlaceCellJob implements LoadBalancerJob {
             data.set(key, PersistentDataType.STRING, "BLOCK");
         }
     }
+
+    @Override
+    public org.bukkit.World getRegionWorld() { return world; }
+
+    @Override
+    public int getRegionChunkX() { return Math.floorDiv(worldX, 16); }
+
+    @Override
+    public int getRegionChunkZ() { return Math.floorDiv(worldZ, 16); }
 }

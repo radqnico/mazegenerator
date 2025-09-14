@@ -8,6 +8,10 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.concurrent.Semaphore;
+import it.nicoloscialpi.mazegenerator.util.Integration;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LoadBalancer extends BukkitRunnable {
 
@@ -54,6 +58,9 @@ public class LoadBalancer extends BukkitRunnable {
         this.spareLow = Math.max(0, plugin.getConfig().getInt("autotune.spare-low", 6));
     }
 
+    // Active tasks tracking to allow /maze stop
+    private static final Set<LoadBalancer> ACTIVE = Collections.newSetFromMap(new ConcurrentHashMap<LoadBalancer, Boolean>());
+
     public synchronized boolean isDone() {
         return isDone;
     }
@@ -63,6 +70,7 @@ public class LoadBalancer extends BukkitRunnable {
             commandSender.sendMessage(MessageFileReader.getMessage("job-started"));
         }
         jobs.addAll(jobProducer.getJobs());
+        ACTIVE.add(this);
         runTaskTimer(plugin, 0L, 1L);
     }
 
@@ -81,6 +89,7 @@ public class LoadBalancer extends BukkitRunnable {
                     commandSender.sendMessage(MessageFileReader.getMessage("job-done"));
                 }
                 this.cancel();
+                ACTIVE.remove(this);
                 return;
             }
 
@@ -99,15 +108,21 @@ public class LoadBalancer extends BukkitRunnable {
             mutex.acquire();
 
             // Consume jobs within the time budget
-            while (!jobs.isEmpty() && System.currentTimeMillis() <= stopTime) {
-                LoadBalancerJob job = jobs.poll();
-                if (job != null) {
-                    job.compute();
-                    iterations++;
-                    if (commandSender != null && (iterations % 5000 == 0)) {
-                        double percentage = jobProducer.getProgressPercentage();
-                        commandSender.sendMessage(
-                                MessageFileReader.getMessage("job-status")
+                while (!jobs.isEmpty() && System.currentTimeMillis() <= stopTime) {
+                    LoadBalancerJob job = jobs.poll();
+                    if (job != null) {
+                        boolean scheduled = false;
+                        if (job instanceof RegionTask rt) {
+                            scheduled = Integration.runRegionTask(plugin, rt.getRegionWorld(), rt.getRegionChunkX(), rt.getRegionChunkZ(), job::compute);
+                        }
+                        if (!scheduled) {
+                            job.compute();
+                        }
+                        iterations++;
+                        if (commandSender != null && (iterations % 5000 == 0)) {
+                            double percentage = jobProducer.getProgressPercentage();
+                            commandSender.sendMessage(
+                                    MessageFileReader.getMessage("job-status")
                                         .replace("%percentage%", String.format("%.2f", percentage))
                         );
                     }
@@ -130,6 +145,25 @@ public class LoadBalancer extends BukkitRunnable {
         } catch (Exception e) {
             e.printStackTrace();
             this.cancel();
+            ACTIVE.remove(this);
+        }
+    }
+
+    public synchronized void stopNow() {
+        try {
+            isDone = true;
+            if (commandSender != null) {
+                commandSender.sendMessage(MessageFileReader.getMessage("job-stopped"));
+            }
+            this.cancel();
+        } finally {
+            ACTIVE.remove(this);
+        }
+    }
+
+    public static void stopAll() {
+        for (LoadBalancer lb : ACTIVE.toArray(new LoadBalancer[0])) {
+            lb.stopNow();
         }
     }
 }

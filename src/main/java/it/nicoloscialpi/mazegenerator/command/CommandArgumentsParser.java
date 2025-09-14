@@ -11,11 +11,14 @@ public class CommandArgumentsParser {
     public CommandArgumentsParser(ArrayList<String> arguments) {
         argumentValue = new HashMap<>();
         for (String argument : arguments) {
-            String[] split = argument.split(":");
-            if (split.length != 2) {
-                continue;
+            if (argument == null) continue;
+            String[] split = argument.split(":", 2);
+            if (split.length != 2) continue;
+            String key = split[0] != null ? split[0].trim().toLowerCase() : "";
+            String value = split[1] != null ? split[1].trim() : "";
+            if (!key.isEmpty()) {
+                argumentValue.put(key, value);
             }
-            argumentValue.put(split[0].toLowerCase(), split[1].toLowerCase());
         }
     }
 
