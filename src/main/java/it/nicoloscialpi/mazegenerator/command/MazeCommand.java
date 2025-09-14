@@ -81,7 +81,10 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String s, @NotNull String[] args) {
-        if (!sender.hasPermission("mazegenerator.maze")) return false;
+        if (!sender.hasPermission("mazegenerator.maze")) {
+            sender.sendMessage(MessageFileReader.getMessage("no-permission"));
+            return true;
+        }
 
         // Subcommand: stop
         if (args.length > 0 && args[0].equalsIgnoreCase("stop")) {
@@ -93,6 +96,19 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         // Subcommand: help
         if (args.length > 0 && args[0].equalsIgnoreCase("help")) {
             sendHelp(sender);
+            return true;
+        }
+
+        // Subcommand: reload
+        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
+            if (!sender.hasPermission("mazegenerator.reload")) {
+                sender.sendMessage(MessageFileReader.getMessage("no-permission"));
+                return true;
+            }
+            plugin.reloadConfig();
+            Themes.parseThemesFromReader(new it.nicoloscialpi.mazegenerator.themes.ThemeConfigurationReader(plugin, "themes.yml"));
+            MessageFileReader.read(plugin, "messages.yml");
+            sender.sendMessage(MessageFileReader.getMessage("config-reloaded"));
             return true;
         }
 
@@ -108,6 +124,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         try {
             Theme theme = Themes.getTheme(opt.themeName);
             Location origin = new Location(sender.getServer().getWorld(opt.world), opt.x, opt.y, opt.z);
+            boolean forceChunkLoad = plugin.getConfig().getBoolean("force-chunk-load", true);
             MazeStreamPlacer streamPlacer = new MazeStreamPlacer(
                     theme,
                     origin,
@@ -123,7 +140,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     opt.roomSizeX,
                     opt.roomSizeZ,
                     opt.hasExits,
-                    false
+                    forceChunkLoad
             );
             LoadBalancer lb = new LoadBalancer(plugin, sender, streamPlacer);
             lb.start();
@@ -197,7 +214,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             return suggestions;
         }
 
-        // Build final list: key suggestions with ':' plus optional 'stop'/'help' subcommands
+        // Build final list: key suggestions with ':' plus optional 'stop'/'help'/'reload' subcommands
         List<String> out = new ArrayList<>();
         for (String k : suggestions) {
             out.add(k + ":");
@@ -210,6 +227,9 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             }
             if (last.isEmpty() || "help".startsWith(lastLower)) {
                 out.add("help");
+            }
+            if (last.isEmpty() || "reload".startsWith(lastLower)) {
+                out.add("reload");
             }
         }
         return out;
