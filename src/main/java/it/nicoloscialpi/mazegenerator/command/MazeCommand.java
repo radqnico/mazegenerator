@@ -124,7 +124,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         try {
             Theme theme = Themes.getTheme(opt.themeName);
             Location origin = new Location(sender.getServer().getWorld(opt.world), opt.x, opt.y, opt.z);
-            boolean forceChunkLoad = plugin.getConfig().getBoolean("force-chunk-load", true);
             MazeStreamPlacer streamPlacer = new MazeStreamPlacer(
                     theme,
                     origin,
@@ -139,8 +138,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     opt.hasRoom,
                     opt.roomSizeX,
                     opt.roomSizeZ,
-                    opt.hasExits,
-                    forceChunkLoad
+                    opt.hasExits
             );
             LoadBalancer lb = new LoadBalancer(plugin, sender, streamPlacer);
             lb.start();
