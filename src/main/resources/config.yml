@@ -17,3 +17,4 @@ defer-wall-fill: false
 chunk-loads-per-tick: 1
 force-chunk-load: true  # if true, loads up to chunk-loads-per-tick chunks per tick; if false, only places in already-loaded chunks
 cells-per-job: 16  # how many cells to pack into a single placement job (per chunk) to reduce scheduling overhead
+status-interval-jobs: 1000  # send a chat update roughly every N jobs executed
