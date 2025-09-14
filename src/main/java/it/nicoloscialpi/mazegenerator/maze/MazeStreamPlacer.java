@@ -198,12 +198,8 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         int cx = (int) (key >> 32);
         int cz = (int) key;
         if (!w.isChunkLoaded(cx, cz)) {
-            if (forceChunkLoad) {
-                // Synchronously load chunk to ensure placement proceeds
-                w.getChunkAt(cx, cz);
-            } else {
-                return false;
-            }
+            // Do not synchronously load here; let drainPendingForLoadedChunks handle budgeted loads
+            return false;
         }
         addJobForCell(r, c, type, jobs, setBlockData);
         return true;
