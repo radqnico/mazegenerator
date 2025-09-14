@@ -7,6 +7,6 @@ api-version: '1.21'
 
 commands:
   maze:
-    usage: "Example usage: /maze wallHeight:3 cellSize:2 mazeSizeX:5 mazeSizeZ:5 erosion:0.01 themeName:desert"
+    usage: "Usage: /maze [help|stop|reload] or key:value pairs. Example: /maze wallHeight:3 cellSize:2 mazeSizeX:5 mazeSizeZ:5 erosion:0.01 themeName:desert"
     description: "Generate amazing and huge mazes!"
     permission: "mazegenerator.maze"
