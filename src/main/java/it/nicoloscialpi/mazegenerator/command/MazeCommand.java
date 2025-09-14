@@ -155,7 +155,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         String[] lines = new String[]{
                 "--- MazeGenerator Help ---",
                 "Usage: /maze key:value [key:value ...]",
-                "Subcommands: /maze help, /maze stop",
+                "Subcommands: /maze help, /maze stop, /maze reload",
                 "",
                 "Core keys:",
                 "  x,y,z,world          -> placement origin",
@@ -173,7 +173,8 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 "Tips:",
                 "  - Use hollow:true and larger cellSize to reduce blocks",
                 "  - Tweak config.yml (millis-per-tick, jobs-batch-cells) to protect TPS",
-                "  - /maze stop cancels active builds"
+                "  - /maze stop cancels active builds",
+                "  - /maze reload reloads config, messages, themes"
         };
         for (String line : lines) sender.sendMessage(line);
     }
