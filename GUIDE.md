@@ -8,21 +8,13 @@ MazeGenerator builds large, themed mazes in your world without freezing the serv
 
 Key features:
 - Streaming generation and placement — no giant in‑memory queues.
-- Per‑block material randomization using weighted themes (themes.yml).
+- Per‑block material randomization using weighted themes (`themes.yml`).
 - Configurable time budget and batch size to protect TPS.
 - Optional hollow walls; optional closed roof.
-- Works across chunks and worlds; loads chunks on demand so nothing is “missing”.
-- Tab‑complete makes arguments easier; “stop” subcommand to cancel builds.
+- Works across chunks and worlds; chunk loading can be budgeted or disabled.
+- Tab‑complete makes arguments easier; `stop` and `reload` subcommands.
 
-Supported: Paper 1.21.x (plugin `api-version: 1.21`). Folia is also supported and will schedule region‑safe tasks automatically when available.
-
-### Why It’s Fast and Lightweight
-
-- Time‑boxed placement per tick: The plugin only does a small, configurable amount of work each tick so gameplay stays responsive.
-- Streaming, not hoarding: It generates and places cells on the fly; it never builds huge job lists in memory.
-- Chunk‑aware scheduling: It groups work by chunk and only forces a small number of chunk loads at a time (configurable), avoiding big stutters.
-- Smart carving order: Walls never overwrite carved corridors; no wasteful redo work.
-- Hollow option: Shell‑only walls dramatically reduce block writes for large mazes.
+Supported: Paper 1.21.x (`api-version: 1.21`). Folia is supported and will schedule region‑safe tasks automatically when available.
 
 ---
 
@@ -35,9 +27,9 @@ Supported: Paper 1.21.x (plugin `api-version: 1.21`). Folia is also supported an
 Files created/used:
 - `plugins/MazeGenerator/config.yml` — performance and behavior settings.
 - `plugins/MazeGenerator/themes.yml` — material weights per theme.
-- `plugins/MazeGenerator/messages.yml` — user-facing messages.
+- `plugins/MazeGenerator/messages.yml` — user‑facing messages.
 
-Restart or `/reload` the plugin after making changes to these files.
+Restart or `/reload` the plugin after making changes to these files, or use `/maze reload`.
 
 ---
 
@@ -78,7 +70,7 @@ Tip: Keep top materials lighter (e.g., slabs/logs) for a nice skyline; raise wal
 ## Messages (messages.yml)
 
 Color codes use `&` (legacy), translated at send time. Relevant keys:
-- `plugin-prefix`, `job-started`, `job-status`, `job-done`, `job-stopped`, `command-error`.
+- `plugin-prefix`, `job-started`, `job-status`, `job-done`, `job-stopped`, `command-error`, `no-permission`, `config-reloaded`.
 
 ---
 
@@ -93,10 +85,12 @@ Defaults aim to preserve TPS out of the box:
   - `spare-low: 12` (back off faster when tick gets tight)
 - `defer-wall-fill: false` — fill walls first, then carve (instant visual walls, then corridors appear).
 - `chunk-loads-per-tick: 1` — at most this many new chunks are sync‑loaded per tick from the pending buffer.
+- `force-chunk-load: true` — if true, the builder may load up to `chunk-loads-per-tick` new chunks per tick from its buffer; if false, it only places in already‑loaded chunks (buffering the rest until chunks load naturally).
 
 Important:
-- The builder never “skips” far chunks: if a cell’s chunk isn’t loaded, it will be loaded on demand (synchronously) before placing; or (for buffered cells) up to `chunk-loads-per-tick` per tick to avoid stutters.
-- If you want zero chunk loads during placement, set `chunk-loads-per-tick: 0`. Then only already‑loaded chunks are placed; remaining cells place later once chunks become loaded by normal gameplay.
+- With `force-chunk-load: true`, the builder loads at most `chunk-loads-per-tick` new chunks per tick from its buffer to avoid spikes.
+- With `force-chunk-load: false`, it will not load chunks; work in unloaded chunks is buffered until those chunks are loaded by normal gameplay.
+- If you want absolutely zero chunk loads, set `force-chunk-load: false` (then `chunk-loads-per-tick` has no effect).
 
 Recommended tuning:
 - Smoother (slower): `millis-per-tick: 2`, `jobs-batch-cells: 32`, `chunk-loads-per-tick: 0–1`.
@@ -109,6 +103,7 @@ Recommended tuning:
 Base command:
 - `/maze` — starts a build with sensible defaults near your position.
 - `/maze stop` — stops all active maze builds.
+- `/maze reload` — reloads config, messages, and themes (permission `mazegenerator.reload`).
 
 Arguments are `key:value` pairs; order doesn’t matter. Tab‑complete suggests keys and, for some keys, values.
 
@@ -157,13 +152,16 @@ Build at coordinates in another world:
 Stop any in‑progress builds:
 - `/maze stop`
 
+Reload configuration, messages, and themes:
+- `/maze reload` (permission `mazegenerator.reload`)
+
 ---
 
 ## Troubleshooting & Tips
 
 - Server lag while building:
   - Lower `millis-per-tick` and `jobs-batch-cells` in `config.yml`.
-  - Set `chunk-loads-per-tick: 0–1` to avoid loading too many new chunks in a single tick.
+  - Set `chunk-loads-per-tick: 0–1` and/or `force-chunk-load: false` to avoid loading too many new chunks during a tick.
   - Use `hollow:true` and/or increase `cellSize` to dramatically reduce block count.
 
 - Gaps or uncarved spots:
@@ -174,29 +172,6 @@ Stop any in‑progress builds:
 
 - Performance on Folia:
   - The plugin uses Folia’s region scheduler automatically when available for region‑safe calls.
-
----
-
-## Extreme Commands (Challenge Yourself)
-
-Warning: These will stress even strong servers. Use with care and consider running alone on the server.
-
-1) Mega open-sky labyrinth (very large footprint, hollow walls):
-- `/maze mazeSizeX:151 mazeSizeZ:151 cellSize:3 wallHeight:6 hollow:true closed:false hasExits:true additionalExits:3 themeName:desert`
-
-2) Dense “city” maze with closed roof:
-- `/maze mazeSizeX:121 mazeSizeZ:121 cellSize:2 wallHeight:6 closed:true hollow:false hasExits:true additionalExits:4 themeName:mountain`
-
-3) Jungle ruins with erosion and a big central room:
-- `/maze mazeSizeX:101 mazeSizeZ:101 cellSize:2 wallHeight:4 hasRoom:true roomSizeX:15 roomSizeZ:11 erosion:0.05 hasExits:true themeName:jungle`
-
-4) Nether sprawl in another world (be mindful of lava):
-- `/maze world:world_nether x:0 y:80 z:0 mazeSizeX:99 mazeSizeZ:99 cellSize:2 wallHeight:4 closed:false hollow:true hasExits:true themeName:desert`
-
-5) Thin but huge footprint (stretch your I/O):
-- `/maze mazeSizeX:201 mazeSizeZ:61 cellSize:2 wallHeight:3 closed:false hollow:true hasExits:true additionalExits:2 themeName:forest`
-
-If TPS dips too much, cancel with `/maze stop`, lower sizes, or reduce `config.yml` budgets.
 
 ---
 
