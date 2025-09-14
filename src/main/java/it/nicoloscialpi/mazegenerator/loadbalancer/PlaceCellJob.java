@@ -42,6 +42,18 @@ public class PlaceCellJob implements LoadBalancerJob, RegionTask {
 
     @Override
     public void compute() {
+        // Ensure all chunks covering this cell are loaded on-demand (no preloading elsewhere)
+        int cx1 = Math.floorDiv(worldX, 16);
+        int cz1 = Math.floorDiv(worldZ, 16);
+        int cx2 = Math.floorDiv(worldX + Math.max(0, cellSize - 1), 16);
+        int cz2 = Math.floorDiv(worldZ + Math.max(0, cellSize - 1), 16);
+        // Load up to 4 chunks covering the cell footprint
+        if (!world.isChunkLoaded(cx1, cz1)) world.getChunkAt(cx1, cz1);
+        if (cx2 != cx1 || cz2 != cz1) {
+            if (!world.isChunkLoaded(cx2, cz1)) world.getChunkAt(cx2, cz1);
+            if (!world.isChunkLoaded(cx1, cz2)) world.getChunkAt(cx1, cz2);
+            if (!world.isChunkLoaded(cx2, cz2)) world.getChunkAt(cx2, cz2);
+        }
         // Vanilla placement path (thread-safe on server thread)
         // Floor at y=0 relative
         int y = 0;

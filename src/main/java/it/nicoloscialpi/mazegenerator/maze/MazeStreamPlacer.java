@@ -189,18 +189,12 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
     }
 
     private void enqueueOrBuffer(int r, int c, byte type, ArrayList<LoadBalancerJob> jobs, boolean setBlockData) {
-        if (!enqueueIfChunkLoaded(r, c, type, jobs, setBlockData)) bufferCell(r, c, type);
+        // Always enqueue; PlaceCellJob will load chunks on-demand
+        addJobForCell(r, c, type, jobs, setBlockData);
     }
 
     private boolean enqueueIfChunkLoaded(int r, int c, byte type, ArrayList<LoadBalancerJob> jobs, boolean setBlockData) {
-        World w = location.getWorld();
-        long key = chunkKeyForCell(r, c);
-        int cx = (int) (key >> 32);
-        int cz = (int) key;
-        if (!w.isChunkLoaded(cx, cz)) {
-            // Do not synchronously load here; let drainPendingForLoadedChunks handle budgeted loads
-            return false;
-        }
+        // Always enqueue; job handles loading.
         addJobForCell(r, c, type, jobs, setBlockData);
         return true;
     }
