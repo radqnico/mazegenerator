@@ -36,6 +36,8 @@ public class LoadBalancer extends BukkitRunnable {
     private final int decStep;
     private final int spareHigh;
     private final int spareLow;
+    private final int statusEveryJobs;
+    private long lastStatusAtIterations = 0;
 
     public LoadBalancer(JavaPlugin plugin, CommandSender commandSender, JobProducer jobProducer) {
         this.plugin = plugin;
@@ -56,6 +58,7 @@ public class LoadBalancer extends BukkitRunnable {
         this.decStep = Math.max(1, plugin.getConfig().getInt("autotune.decrease-step", 1));
         this.spareHigh = Math.max(0, plugin.getConfig().getInt("autotune.spare-high", 12));
         this.spareLow = Math.max(0, plugin.getConfig().getInt("autotune.spare-low", 6));
+        this.statusEveryJobs = Math.max(1, plugin.getConfig().getInt("status-interval-jobs", 1000));
     }
 
     // Active tasks tracking to allow /maze stop
@@ -119,12 +122,13 @@ public class LoadBalancer extends BukkitRunnable {
                             job.compute();
                         }
                         iterations++;
-                        if (commandSender != null && (iterations % 5000 == 0)) {
+                        if (commandSender != null && (iterations - lastStatusAtIterations) >= statusEveryJobs) {
                             double percentage = jobProducer.getProgressPercentage();
                             commandSender.sendMessage(
                                     MessageFileReader.getMessage("job-status")
                                         .replace("%percentage%", String.format("%.2f", percentage))
                         );
+                            lastStatusAtIterations = iterations;
                     }
                 }
             }
