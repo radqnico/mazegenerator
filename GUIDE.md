@@ -1,6 +1,6 @@
 # MazeGenerator — User Guide
 
-This guide explains how to install, configure, and use MazeGenerator on a Paper (or Folia) server. It covers themes, command arguments, performance tips, and example commands — including “extreme” builds to challenge your server.
+This guide explains how to install, configure, and use MazeGenerator on a Paper server. It covers themes, command arguments, performance tips, and example commands — including “extreme” builds to challenge your server.
 
 ## What It Does
 
@@ -14,7 +14,7 @@ Key features:
 - Works across chunks and worlds; chunk loading can be budgeted or disabled.
 - Tab‑complete makes arguments easier; `stop` and `reload` subcommands.
 
-Supported: Paper 1.21.x (`api-version: 1.21`). Folia is supported and will schedule region‑safe tasks automatically when available.
+Supported: Paper 1.21.x (`api-version: 1.21`).
 
 ---
 
@@ -170,8 +170,6 @@ Reload configuration, messages, and themes:
 - Themes look too uniform:
   - Increase variety by adding more materials and weights in `themes.yml` for `wall`/`top`.
 
-- Performance on Folia:
-  - The plugin uses Folia’s region scheduler automatically when available for region‑safe calls.
 
 ---
 

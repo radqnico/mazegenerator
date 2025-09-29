@@ -8,7 +8,6 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.concurrent.Semaphore;
-import it.nicoloscialpi.mazegenerator.util.Integration;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -111,28 +110,21 @@ public class LoadBalancer extends BukkitRunnable {
             mutex.acquire();
 
             // Consume jobs within the time budget
-                while (!jobs.isEmpty() && System.currentTimeMillis() <= stopTime) {
-                    LoadBalancerJob job = jobs.poll();
-                    if (job != null) {
-                        boolean scheduled = false;
-                        if (job instanceof RegionTask rt) {
-                            scheduled = Integration.runRegionTask(plugin, rt.getRegionWorld(), rt.getRegionChunkX(), rt.getRegionChunkZ(), job::compute);
-                        }
-                        if (!scheduled) {
-                            job.compute();
-                        }
-                        iterations++;
-                        if (commandSender != null && (iterations - lastStatusAtIterations) >= statusEveryJobs) {
-                            double percentage = jobProducer.getProgressPercentage();
-                            commandSender.sendMessage(
-                                    MessageFileReader.getMessage("job-status")
+            while (!jobs.isEmpty() && System.currentTimeMillis() <= stopTime) {
+                LoadBalancerJob job = jobs.poll();
+                if (job != null) {
+                    job.compute();
+                    iterations++;
+                    if (commandSender != null && (iterations - lastStatusAtIterations) >= statusEveryJobs) {
+                        double percentage = jobProducer.getProgressPercentage();
+                        commandSender.sendMessage(
+                                MessageFileReader.getMessage("job-status")
                                         .replace("%percentage%", String.format("%.2f", percentage))
                         );
-                            lastStatusAtIterations = iterations;
+                        lastStatusAtIterations = iterations;
                     }
                 }
             }
-
             // Top-up jobs if queue is low
             if (jobs.isEmpty()) {
                 List<LoadBalancerJob> next = jobProducer.getJobs();

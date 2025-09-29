@@ -14,7 +14,7 @@ import static it.nicoloscialpi.mazegenerator.maze.MazeGenerator.WALL;
 /**
  * Places multiple cells within the same chunk in a single job to reduce scheduling overhead.
  */
-public class BatchPlaceCellsJob implements LoadBalancerJob, RegionTask {
+public class BatchPlaceCellsJob implements LoadBalancerJob {
 
     private final World world;
     private final int chunkX;
@@ -154,13 +154,5 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, RegionTask {
         }
     }
 
-    @Override
-    public World getRegionWorld() { return world; }
-
-    @Override
-    public int getRegionChunkX() { return chunkX; }
-
-    @Override
-    public int getRegionChunkZ() { return chunkZ; }
 }
 
