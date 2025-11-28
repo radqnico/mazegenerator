@@ -78,10 +78,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
 
     private Optional<String> validate(MazeOptions o, CommandSender sender) {
         if (o.mazeSizeX < 1 || o.mazeSizeZ < 1) return Optional.of("Invalid maze size");
-        if (o.mazeSizeX > 501 || o.mazeSizeZ > 501) return Optional.of("Maze size too large (max 501 per axis)");
         if (o.cellSize < 1 || o.wallHeight < 1) return Optional.of("Invalid cellSize/wallHeight");
-        if (o.cellSize > 32) return Optional.of("cellSize too large (max 32)");
-        if (o.wallHeight > 32) return Optional.of("wallHeight too large (max 32)");
         if (o.erosion < 0.0 || o.erosion > 1.0) return Optional.of("Erosion must be in [0,1]");
         World w = sender.getServer().getWorld(o.world);
         if (w == null) return Optional.of("World not found: " + o.world);
