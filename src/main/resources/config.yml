@@ -25,3 +25,6 @@ placement-max-pending: "8M"  # rough cap on in-memory pending cell data before f
 disk-spill:
   enabled: true
   max-file-size: "128M"  # cap for temporary spill files (e.g., 128M, 2G)
+
+# If false, skip particle preview/confirmation and build immediately
+request-confirm: true

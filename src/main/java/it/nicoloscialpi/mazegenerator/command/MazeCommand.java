@@ -326,7 +326,15 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("Only players can preview and confirm mazes. Use in-game.");
                 return true;
             }
-            // Store pending build and show preview particles
+
+            boolean requestConfirm = plugin.getConfig().getBoolean("request-confirm", true);
+            if (!requestConfirm) {
+                MazePreviewer.stopPreview(p);
+                startBuild(sender, opt, theme, origin);
+                sender.sendMessage(MessageFileReader.getMessage("build-no-preview"));
+                return true;
+            }
+
             PENDING.remove(p.getUniqueId());
             MazePreviewer.stopPreview(p);
             PendingBuild pending = new PendingBuild(opt, theme, origin);

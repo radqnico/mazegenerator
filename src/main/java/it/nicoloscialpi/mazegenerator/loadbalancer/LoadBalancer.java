@@ -45,6 +45,7 @@ public class LoadBalancer extends BukkitRunnable {
     private final int statusEveryJobs;
     private long lastStatusAtIterations = 0;
     private long lastStatusAtMillis = 0;
+    private static final long STATUS_MIN_INTERVAL_MS = 60_000L;
     private double spareNanosAvg = 0;
     private final Player playerTarget;
     private BossBar bossBar;
@@ -202,8 +203,7 @@ public class LoadBalancer extends BukkitRunnable {
 
     private boolean shouldSendStatus() {
         long now = System.currentTimeMillis();
-        if ((iterations - lastStatusAtIterations) >= statusEveryJobs) return true;
-        return (now - lastStatusAtMillis) >= 1000; // once per second for responsiveness
+        return (now - lastStatusAtMillis) >= STATUS_MIN_INTERVAL_MS;
     }
 
     public static LoadBalancer getFor(CommandSender sender) {
