@@ -6,7 +6,7 @@
 
     <groupId>it.nicoloscialpi</groupId>
     <artifactId>MazeGenerator</artifactId>
-    <version>1.7.2</version>
+    <version>1.7.4</version>
     <packaging>jar</packaging>
 
     <name>MazeGenerator</name>
@@ -82,7 +82,7 @@
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
-            <version>1.21.6-R0.1-SNAPSHOT</version>
+            <version>1.21.10-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
