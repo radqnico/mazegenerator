@@ -189,7 +189,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             MazePreviewer.showPreview(p, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize);
             sender.sendMessage("Preview shown with particles (enable them). Use /maze confirm to start or /maze cancel to discard.");
         } catch (Exception e) {
-            sender.sendMessage(MessageFileReader.getMessage("command-error"));
+            sender.sendMessage("An unexpected plugin error occurred. Please contact the developer on Modrinth with your command details.");
             sender.getServer().getLogger().severe(e.toString());
         }
         return true;
