@@ -51,13 +51,13 @@ public final class MazePreviewer {
         }
 
         // Height columns on corners
-        int stepY = Math.max(1, Math.min(3, wallHeight));
+        int stepY = Math.max(1, Math.min(2, wallHeight));
         int heightLimit = Math.max(1, wallHeight);
         int[][] corners = new int[][]{
                 {0, 0}, {width, 0}, {0, depth}, {width, depth}
         };
         for (int[] c : corners) {
-            for (int dy = 0; dy <= heightLimit && count < maxParticles; dy += stepY) {
+            for (int dy = heightLimit; dy >= 0 && count < maxParticles; dy -= stepY) {
                 heightLines.add(new Location(world, origin.getX() + c[0], baseY + dy, origin.getZ() + c[1]));
                 count++;
             }
