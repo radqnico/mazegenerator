@@ -1,6 +1,7 @@
 package it.nicoloscialpi.mazegenerator.loadbalancer;
 
 import it.nicoloscialpi.mazegenerator.MessageFileReader;
+import it.nicoloscialpi.mazegenerator.maze.BuildPhase;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.boss.BossBar;
@@ -46,6 +47,7 @@ public class LoadBalancer extends BukkitRunnable {
     private long lastBarAtMillis = 0;
     private static final long CHAT_INTERVAL_MS = 60_000L;
     private static final long BAR_INTERVAL_MS = 1_000L;
+    private java.util.EnumMap<BuildPhase, BossBar> phaseBars;
     private double spareNanosAvg = 0;
     private final Player playerTarget;
     private BossBar bossBar;
@@ -88,10 +90,15 @@ public class LoadBalancer extends BukkitRunnable {
         ACTIVE.add(this);
         ChunkLoadLimiter.resetBudget();
         if (playerTarget != null) {
-            bossBar = Bukkit.createBossBar("Maze build", BarColor.BLUE, BarStyle.SOLID);
-            bossBar.addPlayer(playerTarget);
-            bossBar.setProgress(0.0);
-            bossBar.setVisible(true);
+            phaseBars = new java.util.EnumMap<>(BuildPhase.class);
+            for (BuildPhase phase : BuildPhase.values()) {
+                BossBar bar = Bukkit.createBossBar(formatPhaseTitle(phase, 0.0), getPhaseColor(phase), BarStyle.SOLID);
+                bar.addPlayer(playerTarget);
+                bar.setProgress(0.0);
+                bar.setVisible(true);
+                phaseBars.put(phase, bar);
+            }
+            bossBar = phaseBars.get(BuildPhase.GENERATION); // primary bar reference kept for cleanup
         }
         runTaskTimer(plugin, 0L, 1L);
     }
@@ -159,12 +166,13 @@ public class LoadBalancer extends BukkitRunnable {
                     boolean sendBars = shouldSendBars();
                     if (sendChat || sendBars) {
                         double percentage = jobProducer.getProgressPercentage();
+                        PhaseProgressSnapshot phaseSnapshot = jobProducer.getPhaseProgress();
                         if (sendChat) {
-                            sendChatStatus(percentage);
+                            sendChatStatus(percentage, phaseSnapshot);
                             lastChatAtMillis = System.currentTimeMillis();
                         }
                         if (sendBars) {
-                            sendBarStatus(percentage);
+                            sendBarStatus(phaseSnapshot);
                             lastBarAtMillis = System.currentTimeMillis();
                         }
                     }
@@ -240,9 +248,23 @@ public class LoadBalancer extends BukkitRunnable {
         return currentMillisPerTick;
     }
 
-    private void sendChatStatus(double percentage) {
+    private BarColor getPhaseColor(BuildPhase phase) {
+        return switch (phase) {
+            case GENERATION -> BarColor.YELLOW;
+            case PLACEMENT -> BarColor.BLUE;
+            case CARVING -> BarColor.GREEN;
+        };
+    }
+
+    private String formatPhaseTitle(BuildPhase phase, double pct) {
+        return String.format("Maze %s: %.2f%%", phase.getKey(), pct);
+    }
+
+    private void sendChatStatus(double percentage, PhaseProgressSnapshot snapshot) {
+        String phaseKey = snapshot != null ? snapshot.currentPhase().getKey() : "unknown";
         String chat = MessageFileReader.getMessage("job-status")
                 .replace("%percentage%", String.format("%.2f", percentage))
+                .replace("%phase%", phaseKey)
                 + " [chunk loads: " + ChunkLoadLimiter.getConsumedLoads() + "/" + ChunkLoadLimiter.getBudgetPerTick()
                 + ", budget: " + currentMillisPerTick + "ms]";
         commandSender.sendMessage(chat);
@@ -253,22 +275,34 @@ public class LoadBalancer extends BukkitRunnable {
                 + ", budget " + currentMillisPerTick + "ms");
     }
 
-    private void sendBarStatus(double percentage) {
-        if (playerTarget == null) return;
-        double clamped = Math.max(0.0, Math.min(1.0, percentage / 100.0));
-        playerTarget.sendActionBar(Component.text(String.format("Maze build: %.2f%%", percentage)));
-        if (bossBar != null) {
-            bossBar.setProgress(clamped);
-            bossBar.setTitle(String.format("Maze build: %.2f%%", percentage));
+    private void sendBarStatus(PhaseProgressSnapshot snapshot) {
+        if (playerTarget == null || snapshot == null) return;
+        double pct = snapshot.get(snapshot.currentPhase());
+        double clamped = Math.max(0.0, Math.min(1.0, pct / 100.0));
+        playerTarget.sendActionBar(Component.text(String.format("Maze %s: %.2f%%", snapshot.currentPhase().getKey(), pct)));
+        if (phaseBars != null) {
+            for (BuildPhase phase : BuildPhase.values()) {
+                double phasePct = snapshot.get(phase);
+                double phaseClamped = Math.max(0.0, Math.min(1.0, phasePct / 100.0));
+                BossBar bar = phaseBars.get(phase);
+                if (bar != null) {
+                    bar.setProgress(phaseClamped);
+                    bar.setTitle(formatPhaseTitle(phase, phasePct));
+                }
+            }
         }
     }
 
     private void cleanupBars() {
-        if (bossBar != null) {
-            bossBar.removeAll();
-            bossBar.setVisible(false);
-            bossBar = null;
+        if (phaseBars != null) {
+            for (BossBar bar : phaseBars.values()) {
+                bar.removeAll();
+                bar.setVisible(false);
+            }
+            phaseBars.clear();
+            phaseBars = null;
         }
+        bossBar = null;
         if (playerTarget != null) {
             playerTarget.sendActionBar(Component.text("Maze build finished."));
         }

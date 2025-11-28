@@ -2,6 +2,7 @@ package it.nicoloscialpi.mazegenerator.maze;
 
 import it.nicoloscialpi.mazegenerator.MazeGeneratorPlugin;
 import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancerJob;
+import it.nicoloscialpi.mazegenerator.loadbalancer.PhaseProgressSnapshot;
 import it.nicoloscialpi.mazegenerator.themes.Theme;
 import it.nicoloscialpi.mazegenerator.util.SizeParser;
 import org.bukkit.Location;
@@ -46,6 +47,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
     private final boolean diskSpillEnabled;
     private final long diskSpillMaxBytes;
     private final Path spillFilePath;
+    private final long totalCells;
     private boolean carvingDone = false;
     private int fillR = 0;
     private int fillC = 0;
@@ -103,6 +105,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         } catch (IOException ignored) {
         }
         this.spillFilePath = spillDir.resolve("maze-spill-" + System.currentTimeMillis() + ".yml");
+        this.totalCells = (long) this.sizeN * (long) this.sizeM;
 
         this.generator = new IncrementalMazeGenerator(this.sizeN, this.sizeM,
                 additionalExits, erosion, hasRoom, roomSizeX, roomSizeZ, hasExits);
@@ -408,8 +411,8 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
 
     @Override
     public double getProgressPercentage() {
-        long phase1Total = (long) sizeN * (long) sizeM;
-        long phase2Total = (long) sizeN * (long) sizeM;
+        long phase1Total = totalCells;
+        long phase2Total = totalCells;
         long carvedCount = carved.cardinality();
         long phase2Done = generator.getEmittedCount();
         long total;
@@ -431,5 +434,38 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         if (total <= 0) return 100.0;
         double pct = (double) done / (double) total * 100.0;
         return Math.max(0.0, Math.min(100.0, pct));
+    }
+
+    @Override
+    public PhaseProgressSnapshot getPhaseProgress() {
+        double generationPct = clampPct((double) generator.getEmittedCount() / (double) totalCells * 100.0);
+        double carvingPct = clampPct((double) carved.cardinality() / (double) totalCells * 100.0);
+        double placementPct;
+        if (deferWallFill) {
+            long wallsToFill = Math.max(1, totalCells - carved.cardinality());
+            placementPct = clampPct((double) filledWalls / (double) wallsToFill * 100.0);
+        } else {
+            long phase1DoneApprox = (long) fillR * (long) sizeM + fillC;
+            placementPct = clampPct((double) phase1DoneApprox / (double) totalCells * 100.0);
+        }
+
+        Map<BuildPhase, Double> map = new java.util.EnumMap<>(BuildPhase.class);
+        map.put(BuildPhase.GENERATION, generationPct);
+        map.put(BuildPhase.PLACEMENT, placementPct);
+        map.put(BuildPhase.CARVING, carvingPct);
+
+        BuildPhase current = determineCurrentPhase(generationPct, placementPct, carvingPct);
+        return new PhaseProgressSnapshot(current, map);
+    }
+
+    private BuildPhase determineCurrentPhase(double generationPct, double placementPct, double carvingPct) {
+        if (generationPct < 100.0) return BuildPhase.GENERATION;
+        if (placementPct < 100.0) return BuildPhase.PLACEMENT;
+        if (carvingPct < 100.0) return BuildPhase.CARVING;
+        return BuildPhase.CARVING;
+    }
+
+    private double clampPct(double v) {
+        return Math.max(0.0, Math.min(100.0, v));
     }
 }

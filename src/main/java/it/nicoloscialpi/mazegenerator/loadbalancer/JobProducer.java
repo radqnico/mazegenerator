@@ -5,5 +5,8 @@ import java.util.List;
 public interface JobProducer {
     List<LoadBalancerJob> getJobs();
     double getProgressPercentage();
-}
 
+    default PhaseProgressSnapshot getPhaseProgress() {
+        return null;
+    }
+}
