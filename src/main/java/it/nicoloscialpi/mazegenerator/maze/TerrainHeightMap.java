@@ -25,14 +25,11 @@ public final class TerrainHeightMap {
                 int worldX = baseX + r * cellSize + Math.max(0, cellSize / 2);
                 int worldZ = baseZ + c * cellSize + Math.max(0, cellSize / 2);
                 int h = world.getHighestBlockYAt(worldX, worldZ);
-                if (h <= world.getMinHeight()) {
-                    heights[r][c] = minY;
-                } else {
+                if (h > world.getMinHeight()) {
                     hasGround = true;
-                    h = Math.max(h, baseY);
-                    h = Math.min(Math.max(minY, h), maxY);
-                    heights[r][c] = h;
                 }
+                h = Math.min(Math.max(minY, h), maxY);
+                heights[r][c] = h;
             }
         }
 
