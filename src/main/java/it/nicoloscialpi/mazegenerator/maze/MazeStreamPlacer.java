@@ -2,17 +2,24 @@ package it.nicoloscialpi.mazegenerator.maze;
 
 import it.nicoloscialpi.mazegenerator.MazeGeneratorPlugin;
 import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancerJob;
-import it.nicoloscialpi.mazegenerator.loadbalancer.PlaceCellJob;
 import it.nicoloscialpi.mazegenerator.themes.Theme;
 import org.bukkit.Location;
+import org.bukkit.World;
 
 import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbalancer.JobProducer {
 
     private final Theme theme;
     private final Location location;
+    private final World world;
+    private final int baseX;
+    private final int baseY;
+    private final int baseZ;
     private final int height;
     private final int cellSize;
     private final boolean closed;
@@ -32,7 +39,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
     private boolean carvingDone = false;
     private int fillR = 0;
     private int fillC = 0;
-    private final java.util.BitSet carved = new java.util.BitSet();
+    private final BitSet carved = new BitSet();
     private long filledWalls = 0;
 
     public MazeStreamPlacer(Theme theme,
@@ -51,6 +58,10 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                             boolean hasExits) {
         this.theme = theme;
         this.location = location;
+        this.world = location.getWorld();
+        this.baseX = location.getBlockX();
+        this.baseY = location.getBlockY();
+        this.baseZ = location.getBlockZ();
         this.height = height;
         this.cellSize = cellSize;
         this.closed = closed;
@@ -77,134 +88,134 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         int blocksPerCell = Math.max(1, cellSize * cellSize * (height + 1));
         int effectiveCellsPerJob = Math.max(1, Math.min(cellsPerJob, Math.max(1, maxBlocksPerJob / blocksPerCell)));
         ArrayList<LoadBalancerJob> jobs = new ArrayList<>(Math.max(1, batch / effectiveCellsPerJob));
-        java.util.HashMap<Long, java.util.ArrayList<int[]>> groups = new java.util.HashMap<>();
-        final int worldY = location.getBlockY();
-        final int baseX = location.getBlockX();
-        final int baseZ = location.getBlockZ();
-        final org.bukkit.World world = location.getWorld();
-        final java.util.function.BiConsumer<Long, int[]> addToGroup = (key, cell) -> {
-            long chunkKey = key.longValue();
-            var list = groups.computeIfAbsent(chunkKey, k2 -> new java.util.ArrayList<>());
-            list.add(cell);
-            if (list.size() >= effectiveCellsPerJob) {
-                int[][] arr = list.toArray(new int[0][]);
-                int cx = (int) (chunkKey >> 32);
-                int cz = (int) chunkKey;
-                jobs.add(new it.nicoloscialpi.mazegenerator.loadbalancer.BatchPlaceCellsJob(world, cx, cz, theme, height, cellSize, closed, hollow, setBlockData, arr));
-                groups.remove(chunkKey);
-            }
-        };
+        HashMap<Long, ArrayList<int[]>> groups = new HashMap<>();
         int collected = 0;
 
         if (deferWallFill) {
-            // Phase 1: carve stream first for fast initial visual
             if (!carvingDone) {
-                var cells = generator.pollNextCells(batch - jobs.size());
+                int carveBudget = batch - jobs.size();
+                var cells = generator.pollNextCells(carveBudget);
                 for (IncrementalMazeGenerator.Cell cell : cells) {
                     int r = cell.r();
                     int c = cell.c();
                     carved.set(r * sizeM + c);
-                    // compute cell info and group by chunk
                     int worldX = baseX + r * cellSize;
                     int worldZ = baseZ + c * cellSize;
-                    int cx = Math.floorDiv(worldX, 16);
-                    int cz = Math.floorDiv(worldZ, 16);
-                    long key = (((long) cx) << 32) ^ (cz & 0xffffffffL);
-                    addToGroup.accept(key, new int[]{worldX, worldY, worldZ, cell.type()});
+                    addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, baseY, worldZ, cell.type());
                     collected++;
                     if (collected >= batch) break;
                     if (jobs.size() >= batch) break;
                 }
                 if (jobs.isEmpty()) {
-                    // Carving done, move to wall fill phase
                     carvingDone = true;
                 }
-                // fallthrough to allow flushing groups below
             }
-            // Phase 2: gradually fill remaining wall cells
+
             while (collected < batch && fillR < sizeN) {
                 int idx = fillR * sizeM + fillC;
                 if (!carved.get(idx)) {
-                    int r = fillR, c = fillC;
+                    int r = fillR;
+                    int c = fillC;
                     int worldX = baseX + r * cellSize;
                     int worldZ = baseZ + c * cellSize;
-                    int cx = Math.floorDiv(worldX, 16);
-                    int cz = Math.floorDiv(worldZ, 16);
-                    long key = (((long) cx) << 32) ^ (cz & 0xffffffffL);
-                    addToGroup.accept(key, new int[]{worldX, worldY, worldZ, it.nicoloscialpi.mazegenerator.maze.IncrementalMazeGenerator.WALL});
+                    addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, baseY, worldZ, IncrementalMazeGenerator.WALL);
                     filledWalls++;
                     collected++;
                 }
                 fillC++;
-                if (fillC >= sizeM) { fillC = 0; fillR++; }
-            }
-            // Flush remaining groups
-            for (var e : groups.entrySet()) {
-                int[][] arr = e.getValue().toArray(new int[0][]);
-                long key = e.getKey();
-                int cx = (int) (key >> 32);
-                int cz = (int) (key);
-                jobs.add(new it.nicoloscialpi.mazegenerator.loadbalancer.BatchPlaceCellsJob(world, cx, cz, theme, height, cellSize, closed, hollow, setBlockData, arr));
-            }
-            groups.clear();
-            return jobs;
-        } else {
-            // Phase 1: fill walls
-            while (collected < batch && fillR < sizeN) {
-                int idx = fillR * sizeM + fillC;
-                if (!carved.get(idx)) {
-                    int r = fillR, c = fillC;
-                    int worldX = baseX + r * cellSize;
-                    int worldZ = baseZ + c * cellSize;
-                    int cx = Math.floorDiv(worldX, 16);
-                    int cz = Math.floorDiv(worldZ, 16);
-                    long key = (((long) cx) << 32) ^ (cz & 0xffffffffL);
-                    addToGroup.accept(key, new int[]{worldX, worldY, worldZ, it.nicoloscialpi.mazegenerator.maze.IncrementalMazeGenerator.WALL});
-                    collected++;
+                if (fillC >= sizeM) {
+                    fillC = 0;
+                    fillR++;
                 }
-                fillC++;
-                if (fillC >= sizeM) { fillC = 0; fillR++; }
             }
-            if (collected >= batch) {
-                for (var e : groups.entrySet()) {
-                    int[][] arr = e.getValue().toArray(new int[0][]);
-                    long key = e.getKey();
-                    int cx = (int) (key >> 32);
-                    int cz = (int) (key);
-                    jobs.add(new it.nicoloscialpi.mazegenerator.loadbalancer.BatchPlaceCellsJob(world, cx, cz, theme, height, cellSize, closed, hollow, setBlockData, arr));
-                }
-                groups.clear();
-                return jobs;
-            }
-
-            // Phase 2: carve
-            var cells = generator.pollNextCells(batch - collected);
-            for (IncrementalMazeGenerator.Cell cell : cells) {
-                int r = cell.r();
-                int c = cell.c();
-                int idx = r * sizeM + c;
-                if (cell.type() != IncrementalMazeGenerator.WALL) {
-                    carved.set(idx);
-                }
-                int worldX = baseX + r * cellSize;
-                int worldZ = baseZ + c * cellSize;
-                int cx = Math.floorDiv(worldX, 16);
-                int cz = Math.floorDiv(worldZ, 16);
-                long key = (((long) cx) << 32) ^ (cz & 0xffffffffL);
-                addToGroup.accept(key, new int[]{worldX, worldY, worldZ, cell.type()});
-                collected++;
-                if (collected >= batch) break;
-            }
-            for (var e : groups.entrySet()) {
-                int[][] arr = e.getValue().toArray(new int[0][]);
-                long key = e.getKey();
-                int cx = (int) (key >> 32);
-                int cz = (int) (key);
-                jobs.add(new it.nicoloscialpi.mazegenerator.loadbalancer.BatchPlaceCellsJob(world, cx, cz, theme, height, cellSize, closed, hollow, setBlockData, arr));
-            }
-            groups.clear();
+            flushRemainingGroups(groups, jobs, setBlockData);
             return jobs;
         }
+
+        while (collected < batch && fillR < sizeN) {
+            int idx = fillR * sizeM + fillC;
+            if (!carved.get(idx)) {
+                int r = fillR;
+                int c = fillC;
+                int worldX = baseX + r * cellSize;
+                int worldZ = baseZ + c * cellSize;
+                addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, baseY, worldZ, IncrementalMazeGenerator.WALL);
+                collected++;
+            }
+            fillC++;
+            if (fillC >= sizeM) {
+                fillC = 0;
+                fillR++;
+            }
+        }
+        if (collected >= batch) {
+            flushRemainingGroups(groups, jobs, setBlockData);
+            return jobs;
+        }
+
+        var cells = generator.pollNextCells(batch - collected);
+        for (IncrementalMazeGenerator.Cell cell : cells) {
+            int r = cell.r();
+            int c = cell.c();
+            int idx = r * sizeM + c;
+            if (cell.type() != IncrementalMazeGenerator.WALL) {
+                carved.set(idx);
+            }
+            int worldX = baseX + r * cellSize;
+            int worldZ = baseZ + c * cellSize;
+            addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, baseY, worldZ, cell.type());
+            collected++;
+            if (collected >= batch) break;
+        }
+        flushRemainingGroups(groups, jobs, setBlockData);
+        return jobs;
+    }
+
+    private void addCellToGroup(Map<Long, ArrayList<int[]>> groups,
+                                List<LoadBalancerJob> jobs,
+                                int effectiveCellsPerJob,
+                                boolean setBlockData,
+                                int worldX,
+                                int worldY,
+                                int worldZ,
+                                int type) {
+        long key = chunkKeyFor(worldX, worldZ);
+        ArrayList<int[]> list = groups.computeIfAbsent(key, k -> new ArrayList<>());
+        list.add(new int[]{worldX, worldY, worldZ, type});
+        if (list.size() >= effectiveCellsPerJob) {
+            flushGroup(groups, jobs, key, setBlockData);
+        }
+    }
+
+    private void flushRemainingGroups(Map<Long, ArrayList<int[]>> groups,
+                                      List<LoadBalancerJob> jobs,
+                                      boolean setBlockData) {
+        for (Long key : new ArrayList<>(groups.keySet())) {
+            flushGroup(groups, jobs, key, setBlockData);
+        }
+        groups.clear();
+    }
+
+    private void flushGroup(Map<Long, ArrayList<int[]>> groups,
+                            List<LoadBalancerJob> jobs,
+                            long chunkKey,
+                            boolean setBlockData) {
+        ArrayList<int[]> cells = groups.remove(chunkKey);
+        if (cells == null || cells.isEmpty()) {
+            return;
+        }
+        int[][] arr = cells.toArray(new int[0][]);
+        int cx = (int) (chunkKey >> 32);
+        int cz = (int) chunkKey;
+        jobs.add(new it.nicoloscialpi.mazegenerator.loadbalancer.BatchPlaceCellsJob(
+                world, cx, cz, theme, height, cellSize, closed, hollow, setBlockData, arr
+        ));
+    }
+
+    private long chunkKeyFor(int worldX, int worldZ) {
+        int cx = Math.floorDiv(worldX, 16);
+        int cz = Math.floorDiv(worldZ, 16);
+        return (((long) cx) << 32) ^ (cz & 0xffffffffL);
     }
 
     @Override

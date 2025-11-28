@@ -26,6 +26,9 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             "hasRoom","roomSizeX","roomSizeZ",
             "erosion","closed","hollow","themeName"
     );
+    private static final List<String> SUBCOMMANDS = Arrays.asList(
+            "stop", "confirm", "cancel", "status", "help", "reload"
+    );
 
     private final JavaPlugin plugin;
     private static final Map<UUID, PendingBuild> PENDING = new HashMap<>();
@@ -101,102 +104,27 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // Subcommand: stop
-        if (args.length > 0 && args[0].equalsIgnoreCase("stop")) {
-            it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.stopAll();
-            sender.sendMessage(MessageFileReader.getMessage("job-stopped"));
-            return true;
-        }
-
-        // Subcommand: confirm
-        if (args.length > 0 && args[0].equalsIgnoreCase("confirm")) {
-            if (!(sender instanceof Player p)) {
-                sender.sendMessage("Only players can confirm builds.");
-                return true;
+        if (args.length > 0) {
+            String sub = args[0].toLowerCase(Locale.ROOT);
+            switch (sub) {
+                case "stop":
+                    return handleStop(sender);
+                case "confirm":
+                    return handleConfirm(sender);
+                case "cancel":
+                    return handleCancel(sender);
+                case "status":
+                    return handleStatus(sender);
+                case "help":
+                    return handleHelp(sender);
+                case "reload":
+                    return handleReload(sender);
+                default:
+                    break;
             }
-            PendingBuild pending = PENDING.remove(p.getUniqueId());
-            if (pending == null) {
-                sender.sendMessage("No pending maze. Use /maze first to preview.");
-                return true;
-            }
-            MazePreviewer.stopPreview(p);
-            startBuild(sender, pending.options, pending.theme, pending.origin);
-            return true;
         }
 
-        // Subcommand: cancel
-        if (args.length > 0 && args[0].equalsIgnoreCase("cancel")) {
-            if (sender instanceof Player p) {
-                MazePreviewer.stopPreview(p);
-                if (PENDING.remove(p.getUniqueId()) != null) {
-                    sender.sendMessage("Pending maze cancelled.");
-                } else {
-                    sender.sendMessage("No pending maze to cancel.");
-                }
-            } else {
-                sender.sendMessage("Nothing to cancel.");
-            }
-            return true;
-        }
-
-        // Subcommand: status
-        if (args.length > 0 && args[0].equalsIgnoreCase("status")) {
-            it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer lb = it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.getFor(sender);
-            if (lb == null) {
-                sender.sendMessage("No active maze for you right now.");
-            } else {
-                sender.sendMessage(String.format("Maze progress: %.2f%% (budget %dms)", lb.getProgressPercentage(), lb.getCurrentMillisPerTick()));
-            }
-            return true;
-        }
-
-        // Subcommand: help
-        if (args.length > 0 && args[0].equalsIgnoreCase("help")) {
-            sendHelp(sender);
-            return true;
-        }
-
-        // Subcommand: reload
-        if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
-            if (!sender.hasPermission("mazegenerator.reload")) {
-                sender.sendMessage(MessageFileReader.getMessage("no-permission"));
-                return true;
-            }
-            plugin.reloadConfig();
-            Themes.parseThemesFromReader(new it.nicoloscialpi.mazegenerator.themes.ThemeConfigurationReader(plugin, "themes.yml"));
-            MessageFileReader.read(plugin, "messages.yml");
-            sender.sendMessage(MessageFileReader.getMessage("config-reloaded"));
-            return true;
-        }
-
-        // Normal generation
-        MazeOptions opt = parseOptions(sender, args);
-        Optional<String> err = validate(opt, sender);
-        if (err.isPresent()) {
-            sender.sendMessage(MessageFileReader.getMessage("command-error"));
-            sender.sendMessage("Reason: " + err.get());
-            return true;
-        }
-
-        try {
-            Theme theme = Themes.getTheme(opt.themeName);
-            Location origin = new Location(sender.getServer().getWorld(opt.world), opt.x, opt.y, opt.z);
-            if (!(sender instanceof Player p)) {
-                sender.sendMessage("Only players can preview and confirm mazes. Use in-game.");
-                return true;
-            }
-            // Store pending build and show preview particles
-            PENDING.remove(p.getUniqueId());
-            MazePreviewer.stopPreview(p);
-            PendingBuild pending = new PendingBuild(opt, theme, origin);
-            PENDING.put(p.getUniqueId(), pending);
-            MazePreviewer.showPreview(plugin, p, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight);
-            sender.sendMessage("Preview shown with particles (enable them). Use /maze confirm to start or /maze cancel to discard.");
-        } catch (Exception e) {
-            sender.sendMessage("An unexpected plugin error occurred. Please contact the developer on Modrinth with your command details.");
-            sender.getServer().getLogger().severe(e.toString());
-        }
-        return true;
+        return handleGeneration(sender, args);
     }
 
     private void startBuild(CommandSender sender, MazeOptions opt, Theme theme, Location origin) {
@@ -303,33 +231,112 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             return suggestions;
         }
 
-        // Build final list: key suggestions with ':' plus optional 'stop'/'help'/'reload' subcommands
+        // Build final list: key suggestions with ':' plus optional subcommands
         List<String> out = new ArrayList<>();
         for (String k : suggestions) {
             out.add(k + ":");
         }
-        // Suggest 'stop/status/help/reload' only for the first token (no key:value yet)
+        // Suggest subcommands only for the first token (no key:value yet)
         if (args.length == 0 || (args.length == 1 && !last.contains(":"))) {
-            String lastLower = last.toLowerCase();
-            if (last.isEmpty() || "stop".startsWith(lastLower)) {
-                out.add("stop");
-            }
-            if (last.isEmpty() || "confirm".startsWith(lastLower)) {
-                out.add("confirm");
-            }
-            if (last.isEmpty() || "cancel".startsWith(lastLower)) {
-                out.add("cancel");
-            }
-            if (last.isEmpty() || "status".startsWith(lastLower)) {
-                out.add("status");
-            }
-            if (last.isEmpty() || "help".startsWith(lastLower)) {
-                out.add("help");
-            }
-            if (last.isEmpty() || "reload".startsWith(lastLower)) {
-                out.add("reload");
+            String lastLower = last.toLowerCase(Locale.ROOT);
+            for (String sub : SUBCOMMANDS) {
+                if (last.isEmpty() || sub.startsWith(lastLower)) {
+                    out.add(sub);
+                }
             }
         }
         return out;
+    }
+
+    private boolean handleStop(CommandSender sender) {
+        it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.stopAll();
+        sender.sendMessage(MessageFileReader.getMessage("job-stopped"));
+        return true;
+    }
+
+    private boolean handleConfirm(CommandSender sender) {
+        if (!(sender instanceof Player p)) {
+            sender.sendMessage("Only players can confirm builds.");
+            return true;
+        }
+        PendingBuild pending = PENDING.remove(p.getUniqueId());
+        if (pending == null) {
+            sender.sendMessage("No pending maze. Use /maze first to preview.");
+            return true;
+        }
+        MazePreviewer.stopPreview(p);
+        startBuild(sender, pending.options, pending.theme, pending.origin);
+        return true;
+    }
+
+    private boolean handleCancel(CommandSender sender) {
+        if (sender instanceof Player p) {
+            MazePreviewer.stopPreview(p);
+            if (PENDING.remove(p.getUniqueId()) != null) {
+                sender.sendMessage("Pending maze cancelled.");
+            } else {
+                sender.sendMessage("No pending maze to cancel.");
+            }
+        } else {
+            sender.sendMessage("Nothing to cancel.");
+        }
+        return true;
+    }
+
+    private boolean handleStatus(CommandSender sender) {
+        it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer lb = it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.getFor(sender);
+        if (lb == null) {
+            sender.sendMessage("No active maze for you right now.");
+        } else {
+            sender.sendMessage(String.format("Maze progress: %.2f%% (budget %dms)", lb.getProgressPercentage(), lb.getCurrentMillisPerTick()));
+        }
+        return true;
+    }
+
+    private boolean handleHelp(CommandSender sender) {
+        sendHelp(sender);
+        return true;
+    }
+
+    private boolean handleReload(CommandSender sender) {
+        if (!sender.hasPermission("mazegenerator.reload")) {
+            sender.sendMessage(MessageFileReader.getMessage("no-permission"));
+            return true;
+        }
+        plugin.reloadConfig();
+        Themes.parseThemesFromReader(new it.nicoloscialpi.mazegenerator.themes.ThemeConfigurationReader(plugin, "themes.yml"));
+        MessageFileReader.read(plugin, "messages.yml");
+        sender.sendMessage(MessageFileReader.getMessage("config-reloaded"));
+        return true;
+    }
+
+    private boolean handleGeneration(CommandSender sender, String[] args) {
+        MazeOptions opt = parseOptions(sender, args);
+        Optional<String> err = validate(opt, sender);
+        if (err.isPresent()) {
+            sender.sendMessage(MessageFileReader.getMessage("command-error"));
+            sender.sendMessage("Reason: " + err.get());
+            return true;
+        }
+
+        try {
+            Theme theme = Themes.getTheme(opt.themeName);
+            Location origin = new Location(sender.getServer().getWorld(opt.world), opt.x, opt.y, opt.z);
+            if (!(sender instanceof Player p)) {
+                sender.sendMessage("Only players can preview and confirm mazes. Use in-game.");
+                return true;
+            }
+            // Store pending build and show preview particles
+            PENDING.remove(p.getUniqueId());
+            MazePreviewer.stopPreview(p);
+            PendingBuild pending = new PendingBuild(opt, theme, origin);
+            PENDING.put(p.getUniqueId(), pending);
+            MazePreviewer.showPreview(plugin, p, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight);
+            sender.sendMessage("Preview shown with particles (enable them). Use /maze confirm to start or /maze cancel to discard.");
+        } catch (Exception e) {
+            sender.sendMessage("An unexpected plugin error occurred. Please contact the developer on Modrinth with your command details.");
+            sender.getServer().getLogger().severe(e.toString());
+        }
+        return true;
     }
 }
