@@ -23,5 +23,5 @@ status-interval-jobs: 1000  # send a chat update roughly every N jobs executed
 # Adaptive placement memory and optional disk spillover for very large mazes
 placement-max-pending: "8M"  # rough cap on in-memory pending cell data before flushing early
 disk-spill:
-  enabled: false
+  enabled: true
   max-file-size: "128M"  # cap for temporary spill files (e.g., 128M, 2G)

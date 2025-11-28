@@ -32,7 +32,7 @@ public final class MazePreviewer {
         int depth = mazeSizeZ * cellSize;
         int step = Math.max(1, Math.min(4, cellSize)); // denser for small cells, capped for big mazes
         int maxParticles = 1200;
-        double baseY = origin.getY() + 1.5;
+        double baseY = origin.getY();
         Particle.DustOptions dust = new Particle.DustOptions(Color.fromRGB(255, 64, 64), 1.2f);
 
         List<Location> perimeter = new ArrayList<>();
