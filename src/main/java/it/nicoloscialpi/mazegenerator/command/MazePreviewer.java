@@ -57,9 +57,17 @@ public final class MazePreviewer {
                 {0, 0}, {width, 0}, {0, depth}, {width, depth}
         };
         for (int[] c : corners) {
-            for (int dy = heightLimit; dy >= 0 && count < maxParticles; dy -= stepY) {
+            int dy = heightLimit;
+            while (count < maxParticles) {
                 heightLines.add(new Location(world, origin.getX() + c[0], baseY + dy, origin.getZ() + c[1]));
                 count++;
+                if (dy == 0) {
+                    break; // reached ground
+                }
+                dy = Math.max(0, dy - stepY);
+            }
+            if (count >= maxParticles) {
+                break;
             }
         }
 
