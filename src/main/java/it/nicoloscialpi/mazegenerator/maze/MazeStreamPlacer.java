@@ -439,7 +439,6 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
     @Override
     public PhaseProgressSnapshot getPhaseProgress() {
         double generationPct = clampPct((double) generator.getEmittedCount() / (double) totalCells * 100.0);
-        double carvingPct = clampPct((double) carved.cardinality() / (double) totalCells * 100.0);
         double placementPct;
         if (deferWallFill) {
             long wallsToFill = Math.max(1, totalCells - carved.cardinality());
@@ -452,17 +451,15 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         Map<BuildPhase, Double> map = new java.util.EnumMap<>(BuildPhase.class);
         map.put(BuildPhase.GENERATION, generationPct);
         map.put(BuildPhase.PLACEMENT, placementPct);
-        map.put(BuildPhase.CARVING, carvingPct);
 
-        BuildPhase current = determineCurrentPhase(generationPct, placementPct, carvingPct);
+        BuildPhase current = determineCurrentPhase(generationPct, placementPct);
         return new PhaseProgressSnapshot(current, map);
     }
 
-    private BuildPhase determineCurrentPhase(double generationPct, double placementPct, double carvingPct) {
+    private BuildPhase determineCurrentPhase(double generationPct, double placementPct) {
         if (generationPct < 100.0) return BuildPhase.GENERATION;
         if (placementPct < 100.0) return BuildPhase.PLACEMENT;
-        if (carvingPct < 100.0) return BuildPhase.CARVING;
-        return BuildPhase.CARVING;
+        return BuildPhase.PLACEMENT;
     }
 
     private double clampPct(double v) {

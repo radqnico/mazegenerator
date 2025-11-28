@@ -252,7 +252,7 @@ public class LoadBalancer extends BukkitRunnable {
         return switch (phase) {
             case GENERATION -> BarColor.YELLOW;
             case PLACEMENT -> BarColor.BLUE;
-            case CARVING -> BarColor.GREEN;
+            default -> BarColor.BLUE;
         };
     }
 

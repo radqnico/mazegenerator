@@ -2,8 +2,7 @@ package it.nicoloscialpi.mazegenerator.maze;
 
 public enum BuildPhase {
     GENERATION("generation"),
-    PLACEMENT("placement"),
-    CARVING("carving");
+    PLACEMENT("placement");
 
     private final String key;
 
