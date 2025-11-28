@@ -1,29 +1,23 @@
-Title: “I asked a Minecraft server to build a mega-maze while players are online”
+Title: “We built a 200x200 maze on a live server without lagging anyone”
 
-Format: 60s vertical, jump-cut pacing, on-screen captions, quick overlays of config/UI. Tone: concise, curious, technical-but-friendly.
+Format: 60s vertical; quick cuts; captions on screen; no filler.
 
-Hook (0-5s)
-- Cold open with a timelapse of walls rising. Voice: “Can you build a 200x200 maze on a live server without lagging everyone out? This plugin can.”
+What to show
+- Particle preview + per-phase boss bars (generation/placement).
+- LayDown mode hugging terrain (show maze draped over hills).
+- Massive size (no caps) + hollow walls for block savings.
+- TPS overlay staying green; chat only once/min, action bar ticking.
+- Config snippets for performance (millis-per-tick, chunk-loads-per-tick, request-confirm, layDown).
 
-Context (5-15s)
-- Show `/maze` command and preview particles. Voice: “It previews the maze with particles, then streams blocks with a time budget per tick so TPS stays stable.”
-- On-screen: quick overlay of the boss bars for Generation/Placement.
+Script (voiceover + visuals)
+0-5s – Hook: timelapse of walls rising + TPS graph. “Can a 200x200 maze run on a busy server without lag? This plugin says yes.”
+5-15s – Preview: `/maze ... layDown:true` with particles hugging terrain; dual boss bars labeled Generation/Placement. “It previews, then streams blocks in phases.”
+15-35s – Features: Tab-complete options; hollow/closed toggles; themes. “Every block is themed, walls can be hollow, and there’s no size cap.”
+35-45s – Performance: Show config and chunk budgets. “You tune tick budget, chunk loads, and even spill to disk to keep RAM flat.”
+45-55s – Proof: Action bar ticking each second, chat ping at 1/min, TPS stable. “Per-phase HUD keeps you updated; TPS stays green.”
+55-60s – CTA: “Grab MazeGenerator 1.8.1 for Paper 1.21.x. Drop in `plugins/`, set `request-confirm` or build instantly, and let the server do the work.”
 
-Features (15-40s)
-- Clip: Tab-completing options (`cellSize`, `hollow`, `closed`, `themeName`). Voice: “Every block is themed—desert, forest, snowy—and walls can be hollow to cut block count.”
-- Clip: Action bar/boss bars updating. Voice: “It reports progress by phase: generation, placement. Chat pings once a minute; boss bars update every second.”
-- Clip: Config snippet (`millis-per-tick`, `chunk-loads-per-tick`, `request-confirm`). Voice: “You tune performance: per-tick budget, chunk load budget, even skip preview to build instantly.”
-- Clip: Massive maze rendering across chunks. Voice: “No size caps. It’ll stream across chunks and even spill to disk if memory gets tight.”
-
-Proof (40-55s)
-- Side-by-side: TPS graph stable vs. maze building. Voice: “Even at 200x200, TPS stays green because it batches by chunk and auto-scales job size.”
-- Quick cut: `/maze stop` and `/maze status` showing phase and percentage.
-
-CTA (55-60s)
-- Voice: “Want it? Grab MazeGenerator for Paper 1.21.x. Drop it in `plugins/`, tweak `config.yml`, and let your server build while everyone keeps playing.”
-- On-screen text: “MazeGenerator 1.8.1 — Streamed, themed mazes without lag.” Include a short link/QR to the download.
-
-Notes for filming
-- Use replay/timelapse for the build.
-- Overlay captions for commands/config keys.
-- Keep cuts tight; no filler B-roll; avoid “hey guys” intros.
+Filming tips
+- Use replay/timelapse for builds; overlay captions for commands/config keys.
+- Show a terrain-following maze to highlight LayDown.
+- Keep cuts tight; no “hey guys” intros; let visuals + short lines carry the story.
