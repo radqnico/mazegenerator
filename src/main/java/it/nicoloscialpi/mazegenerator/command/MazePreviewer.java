@@ -86,7 +86,7 @@ public final class MazePreviewer {
         for (Location loc : points) {
             World w = loc.getWorld();
             if (w == null) continue;
-            w.spawnParticle(Particle.REDSTONE, loc.getX(), loc.getY(), loc.getZ(), 1, 0, 0, 0, 0, dust);
+            w.spawnParticle(Particle.DUST, loc.getX(), loc.getY(), loc.getZ(), 1, 0, 0, 0, 0, dust);
         }
     }
 }
