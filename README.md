@@ -252,15 +252,4 @@ Weights are **positive integers**; higher weight = more likely. If a section is 
 
     * Add more materials and weights to `wall`/`top` sections.
 
-### Tired of sweats?
-
-```bash
-/maze cellSize:1 mazeSizeX:1000 mazeSizeZ:1000 wallHeight:4 themeName:mountain erosion:0.05
-```
-
-![Mountain1](https://i.ibb.co/n1z3HKM/2024-01-25-23-53-59.png)
-![Mountain2](https://i.ibb.co/s9SJMjm/2024-01-25-23-54-19.png)
-
----
-
 # Have fun, cheers! 🎉
