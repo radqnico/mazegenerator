@@ -79,8 +79,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         final int baseX = location.getBlockX();
         final int baseZ = location.getBlockZ();
         final org.bukkit.World world = location.getWorld();
-        final java.util.function.BiConsumer<Integer, int[]> addToGroup = (chunkKey, cell) -> {
-            long key = cell[4];
+        final java.util.function.BiConsumer<Long, int[]> addToGroup = (key, cell) -> {
             var list = groups.computeIfAbsent(key, k -> new java.util.ArrayList<>());
             list.add(cell);
             if (list.size() >= cellsPerJob) {
@@ -107,7 +106,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                     int cx = Math.floorDiv(worldX, 16);
                     int cz = Math.floorDiv(worldZ, 16);
                     long key = (((long) cx) << 32) ^ (cz & 0xffffffffL);
-                    addToGroup.accept((int) key, new int[]{worldX, worldY, worldZ, cell.type(), (int) key});
+                    addToGroup.accept(key, new int[]{worldX, worldY, worldZ, cell.type()});
                     collected++;
                     if (collected >= batch) break;
                     if (jobs.size() >= batch) break;
@@ -128,7 +127,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                     int cx = Math.floorDiv(worldX, 16);
                     int cz = Math.floorDiv(worldZ, 16);
                     long key = (((long) cx) << 32) ^ (cz & 0xffffffffL);
-                    addToGroup.accept((int) key, new int[]{worldX, worldY, worldZ, it.nicoloscialpi.mazegenerator.maze.IncrementalMazeGenerator.WALL, (int) key});
+                    addToGroup.accept(key, new int[]{worldX, worldY, worldZ, it.nicoloscialpi.mazegenerator.maze.IncrementalMazeGenerator.WALL});
                     filledWalls++;
                     collected++;
                 }
@@ -156,7 +155,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                     int cx = Math.floorDiv(worldX, 16);
                     int cz = Math.floorDiv(worldZ, 16);
                     long key = (((long) cx) << 32) ^ (cz & 0xffffffffL);
-                    addToGroup.accept((int) key, new int[]{worldX, worldY, worldZ, it.nicoloscialpi.mazegenerator.maze.IncrementalMazeGenerator.WALL, (int) key});
+                    addToGroup.accept(key, new int[]{worldX, worldY, worldZ, it.nicoloscialpi.mazegenerator.maze.IncrementalMazeGenerator.WALL});
                     collected++;
                 }
                 fillC++;
@@ -188,7 +187,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                 int cx = Math.floorDiv(worldX, 16);
                 int cz = Math.floorDiv(worldZ, 16);
                 long key = (((long) cx) << 32) ^ (cz & 0xffffffffL);
-                addToGroup.accept((int) key, new int[]{worldX, worldY, worldZ, cell.type(), (int) key});
+                addToGroup.accept(key, new int[]{worldX, worldY, worldZ, cell.type()});
                 collected++;
                 if (collected >= batch) break;
             }

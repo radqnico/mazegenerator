@@ -14,7 +14,7 @@ import static it.nicoloscialpi.mazegenerator.maze.MazeGenerator.WALL;
 /**
  * Places multiple cells within the same chunk in a single job to reduce scheduling overhead.
  */
-public class BatchPlaceCellsJob implements LoadBalancerJob {
+public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
 
     private final World world;
     private final int chunkX;
@@ -52,11 +52,12 @@ public class BatchPlaceCellsJob implements LoadBalancerJob {
     }
 
     @Override
+    public boolean prepareChunks() {
+        return ChunkLoadLimiter.ensureLoaded(world, chunkX, chunkZ);
+    }
+
+    @Override
     public void compute() {
-        // Ensure the target chunk is loaded once for the whole batch
-        if (!world.isChunkLoaded(chunkX, chunkZ)) {
-            world.getChunkAt(chunkX, chunkZ);
-        }
         for (int[] c : cells) {
             placeCell(c[0], c[1], c[2], (byte) c[3]);
         }

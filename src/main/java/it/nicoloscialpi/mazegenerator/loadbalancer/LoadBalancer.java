@@ -16,7 +16,8 @@ public class LoadBalancer extends BukkitRunnable {
 
     private static TickEventListener eventListener = null;
 
-    public static long LAST_TICK_START_TIME = 0;
+    public static long LAST_TICK_START_NANOS = 0;
+    private static final long TARGET_TICK_NANOS = 50_000_000L;
 
     private final ArrayDeque<LoadBalancerJob> jobs;
     private final Semaphore mutex;
@@ -37,6 +38,7 @@ public class LoadBalancer extends BukkitRunnable {
     private final int spareLow;
     private final int statusEveryJobs;
     private long lastStatusAtIterations = 0;
+    private double spareNanosAvg = 0;
 
     public LoadBalancer(JavaPlugin plugin, CommandSender commandSender, JobProducer jobProducer) {
         this.plugin = plugin;
@@ -44,6 +46,7 @@ public class LoadBalancer extends BukkitRunnable {
         if (eventListener == null) {
             eventListener = new TickEventListener(plugin);
         }
+        ChunkLoadLimiter.init(plugin);
         this.commandSender = commandSender;
         this.mutex = new Semaphore(1);
         this.jobs = new ArrayDeque<>();
@@ -73,6 +76,7 @@ public class LoadBalancer extends BukkitRunnable {
         }
         jobs.addAll(jobProducer.getJobs());
         ACTIVE.add(this);
+        ChunkLoadLimiter.resetBudget();
         runTaskTimer(plugin, 0L, 1L);
     }
 
@@ -96,24 +100,41 @@ public class LoadBalancer extends BukkitRunnable {
             }
 
             // Auto-tune budget based on last tick spare time (Paper tick is ~50ms)
-            if (autoTune && LAST_TICK_START_TIME > 0) {
-                long sinceTickStart = System.currentTimeMillis() - LAST_TICK_START_TIME;
-                long spare = 50 - sinceTickStart; // ms left in this tick window
-                if (spare >= spareHigh) {
+            if (autoTune && LAST_TICK_START_NANOS > 0) {
+                long sinceTickStartNanos = System.nanoTime() - LAST_TICK_START_NANOS;
+                long spareNanos = TARGET_TICK_NANOS - sinceTickStartNanos;
+                if (spareNanosAvg == 0) {
+                    spareNanosAvg = spareNanos;
+                } else {
+                    spareNanosAvg = spareNanosAvg * 0.7 + spareNanos * 0.3; // smooth jitter
+                }
+                double spareMillis = spareNanosAvg / 1_000_000.0;
+                if (spareMillis >= spareHigh) {
                     currentMillisPerTick = Math.min(maxMillisPerTick, currentMillisPerTick + incStep);
-                } else if (spare < spareLow) {
+                } else if (spareMillis < spareLow) {
                     currentMillisPerTick = Math.max(minMillisPerTick, currentMillisPerTick - decStep);
                 }
             }
 
-            long stopTime = System.currentTimeMillis() + currentMillisPerTick;
+            long stopTime = System.nanoTime() + (currentMillisPerTick * 1_000_000L);
             mutex.acquire();
 
             // Consume jobs within the time budget
-            while (!jobs.isEmpty() && System.currentTimeMillis() <= stopTime) {
+            boolean executedThisTick = false;
+            while (!jobs.isEmpty() && System.nanoTime() <= stopTime) {
                 LoadBalancerJob job = jobs.poll();
                 if (job != null) {
+                    if (job instanceof ChunkAwareJob chunkJob) {
+                        if (!chunkJob.prepareChunks()) {
+                            jobs.addLast(job); // defer to a future tick/budget
+                            if (!executedThisTick) {
+                                break; // avoid spinning when first job cannot run
+                            }
+                            continue;
+                        }
+                    }
                     job.compute();
+                    executedThisTick = true;
                     iterations++;
                     if (commandSender != null && (iterations - lastStatusAtIterations) >= statusEveryJobs) {
                         double percentage = jobProducer.getProgressPercentage();

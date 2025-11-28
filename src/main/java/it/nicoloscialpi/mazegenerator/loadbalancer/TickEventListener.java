@@ -18,6 +18,7 @@ class TickEventListener implements Listener {
 
     @EventHandler
     public void onTick(ServerTickStartEvent event) {
-        LoadBalancer.LAST_TICK_START_TIME = System.currentTimeMillis();
+        LoadBalancer.LAST_TICK_START_NANOS = System.nanoTime();
+        ChunkLoadLimiter.resetBudget();
     }
 }
