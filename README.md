@@ -65,7 +65,7 @@ Recommended tuning:
 
 ## Command Reference
 Base command:
-- `/maze` - starts a build with sensible defaults near your position.
+- `/maze` - shows a particle outline preview. Use `/maze confirm` to start, `/maze cancel` to discard.
 - `/maze stop` - stops all active maze builds.
 - `/maze status` - shows your active maze progress.
 - `/maze reload` - reloads config, messages, and themes (permission `mazegenerator.reload`).

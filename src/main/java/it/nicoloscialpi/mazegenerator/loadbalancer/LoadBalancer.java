@@ -44,6 +44,7 @@ public class LoadBalancer extends BukkitRunnable {
     private final int spareLow;
     private final int statusEveryJobs;
     private long lastStatusAtIterations = 0;
+    private long lastStatusAtMillis = 0;
     private double spareNanosAvg = 0;
     private final Player playerTarget;
     private BossBar bossBar;
@@ -152,11 +153,12 @@ public class LoadBalancer extends BukkitRunnable {
                     job.compute();
                     executedThisTick = true;
                     iterations++;
-                    if (commandSender != null && (iterations - lastStatusAtIterations) >= statusEveryJobs) {
-                        double percentage = jobProducer.getProgressPercentage();
-                        sendStatus(percentage);
-                        lastStatusAtIterations = iterations;
-                    }
+                }
+                if (commandSender != null && shouldSendStatus()) {
+                    double percentage = jobProducer.getProgressPercentage();
+                    sendStatus(percentage);
+                    lastStatusAtIterations = iterations;
+                    lastStatusAtMillis = System.currentTimeMillis();
                 }
             }
             // Top-up jobs if queue is low
@@ -196,6 +198,12 @@ public class LoadBalancer extends BukkitRunnable {
         for (LoadBalancer lb : ACTIVE.toArray(new LoadBalancer[0])) {
             lb.stopNow();
         }
+    }
+
+    private boolean shouldSendStatus() {
+        long now = System.currentTimeMillis();
+        if ((iterations - lastStatusAtIterations) >= statusEveryJobs) return true;
+        return (now - lastStatusAtMillis) >= 1000; // once per second for responsiveness
     }
 
     public static LoadBalancer getFor(CommandSender sender) {

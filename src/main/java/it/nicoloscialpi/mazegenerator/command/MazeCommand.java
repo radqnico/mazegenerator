@@ -28,6 +28,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
     );
 
     private final JavaPlugin plugin;
+    private static final Map<UUID, PendingBuild> PENDING = new HashMap<>();
 
     public MazeCommand(JavaPlugin plugin) { this.plugin = plugin; }
 
@@ -70,6 +71,8 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         return opt;
     }
 
+    private record PendingBuild(MazeOptions options, Theme theme, Location origin) {}
+
     private Optional<String> validate(MazeOptions o, CommandSender sender) {
         if (o.mazeSizeX < 1 || o.mazeSizeZ < 1) return Optional.of("Invalid maze size");
         if (o.mazeSizeX > 501 || o.mazeSizeZ > 501) return Optional.of("Maze size too large (max 501 per axis)");
@@ -102,6 +105,35 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         if (args.length > 0 && args[0].equalsIgnoreCase("stop")) {
             it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.stopAll();
             sender.sendMessage(MessageFileReader.getMessage("job-stopped"));
+            return true;
+        }
+
+        // Subcommand: confirm
+        if (args.length > 0 && args[0].equalsIgnoreCase("confirm")) {
+            if (!(sender instanceof Player p)) {
+                sender.sendMessage("Only players can confirm builds.");
+                return true;
+            }
+            PendingBuild pending = PENDING.remove(p.getUniqueId());
+            if (pending == null) {
+                sender.sendMessage("No pending maze. Use /maze first to preview.");
+                return true;
+            }
+            startBuild(sender, pending.options, pending.theme, pending.origin);
+            return true;
+        }
+
+        // Subcommand: cancel
+        if (args.length > 0 && args[0].equalsIgnoreCase("cancel")) {
+            if (sender instanceof Player p) {
+                if (PENDING.remove(p.getUniqueId()) != null) {
+                    sender.sendMessage("Pending maze cancelled.");
+                } else {
+                    sender.sendMessage("No pending maze to cancel.");
+                }
+            } else {
+                sender.sendMessage("Nothing to cancel.");
+            }
             return true;
         }
 
@@ -147,24 +179,15 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         try {
             Theme theme = Themes.getTheme(opt.themeName);
             Location origin = new Location(sender.getServer().getWorld(opt.world), opt.x, opt.y, opt.z);
-            MazeStreamPlacer streamPlacer = new MazeStreamPlacer(
-                    theme,
-                    origin,
-                    opt.wallHeight,
-                    opt.cellSize,
-                    opt.closed,
-                    opt.hollow,
-                    opt.mazeSizeX,
-                    opt.mazeSizeZ,
-                    opt.additionalExits,
-                    opt.erosion,
-                    opt.hasRoom,
-                    opt.roomSizeX,
-                    opt.roomSizeZ,
-                    opt.hasExits
-            );
-            LoadBalancer lb = new LoadBalancer(plugin, sender, streamPlacer);
-            lb.start();
+            if (!(sender instanceof Player p)) {
+                sender.sendMessage("Only players can preview and confirm mazes. Use in-game.");
+                return true;
+            }
+            // Store pending build and show preview particles
+            PendingBuild pending = new PendingBuild(opt, theme, origin);
+            PENDING.put(p.getUniqueId(), pending);
+            MazePreviewer.showPreview(p, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize);
+            sender.sendMessage("Preview shown with particles (enable them). Use /maze confirm to start or /maze cancel to discard.");
         } catch (Exception e) {
             sender.sendMessage(MessageFileReader.getMessage("command-error"));
             sender.getServer().getLogger().severe(e.toString());
@@ -172,11 +195,32 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private void startBuild(CommandSender sender, MazeOptions opt, Theme theme, Location origin) {
+        MazeStreamPlacer streamPlacer = new MazeStreamPlacer(
+                theme,
+                origin,
+                opt.wallHeight,
+                opt.cellSize,
+                opt.closed,
+                opt.hollow,
+                opt.mazeSizeX,
+                opt.mazeSizeZ,
+                opt.additionalExits,
+                opt.erosion,
+                opt.hasRoom,
+                opt.roomSizeX,
+                opt.roomSizeZ,
+                opt.hasExits
+        );
+        LoadBalancer lb = new LoadBalancer(plugin, sender, streamPlacer);
+        lb.start();
+    }
+
     private void sendHelp(CommandSender sender) {
         String[] lines = new String[]{
                 "--- MazeGenerator Help ---",
                 "Usage: /maze key:value [key:value ...]",
-                "Subcommands: /maze help, /maze stop, /maze status, /maze reload",
+                "Subcommands: /maze help, /maze stop, /maze status, /maze confirm, /maze cancel, /maze reload",
                 "",
                 "Core keys:",
                 "  x,y,z,world          -> placement origin",
@@ -192,6 +236,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 "  /maze world:world_nether x:100 y:80 z:-200 mazeSizeX:41 mazeSizeZ:41 themeName:snowy",
                 "",
                 "Tips:",
+                "  - First /maze shows a particle outline; /maze confirm to build, /maze cancel to discard",
                 "  - Use hollow:true and larger cellSize to reduce blocks",
                 "  - Tweak config.yml (millis-per-tick, jobs-batch-cells, max-blocks-per-job) to protect TPS",
                 "  - /maze stop cancels active builds; /maze status shows progress",
