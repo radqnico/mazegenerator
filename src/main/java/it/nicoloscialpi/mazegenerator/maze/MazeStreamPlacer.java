@@ -112,7 +112,8 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         this.spillFilePath = spillDir.resolve("maze-spill-" + System.currentTimeMillis() + ".yml");
         this.totalCells = (long) this.sizeN * (long) this.sizeM;
         if (layDown) {
-            this.cellHeights = TerrainHeightMap.compute(world, baseX, baseZ, baseY, cellSize, this.sizeN, this.sizeM, height);
+            var sample = TerrainHeightMap.compute(world, baseX, baseZ, baseY, cellSize, this.sizeN, this.sizeM, height);
+            this.cellHeights = sample.valid() ? sample.heights() : null;
         } else {
             this.cellHeights = null;
         }
