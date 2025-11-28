@@ -5,14 +5,12 @@ import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancerJob;
 import it.nicoloscialpi.mazegenerator.loadbalancer.PhaseProgressSnapshot;
 import it.nicoloscialpi.mazegenerator.themes.Theme;
 import it.nicoloscialpi.mazegenerator.util.SizeParser;
+import it.nicoloscialpi.mazegenerator.maze.CellGroupBuffer;
+import it.nicoloscialpi.mazegenerator.maze.SpillStorage;
 import it.nicoloscialpi.mazegenerator.maze.TerrainHeightMap;
 import org.bukkit.Location;
 import org.bukkit.World;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -291,55 +289,6 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
             }
         }
         flushRemainingGroups(fromDisk, jobs, setBlockData);
-    }
-
-    private static final class CellGroupBuffer {
-        private static final int BYTES_PER_CELL = Integer.BYTES * 4;
-        private int[] data = new int[16];
-        private int size = 0;
-
-        void add(int worldX, int worldY, int worldZ, int type) {
-            ensureCapacity(size + 4);
-            data[size++] = worldX;
-            data[size++] = worldY;
-            data[size++] = worldZ;
-            data[size++] = type;
-        }
-
-        int cellCount() {
-            return size / 4;
-        }
-
-        int[][] toCellArray() {
-            int cells = cellCount();
-            int[][] arr = new int[cells][4];
-            int idx = 0;
-            for (int i = 0; i < cells; i++) {
-                arr[i][0] = data[idx++];
-                arr[i][1] = data[idx++];
-                arr[i][2] = data[idx++];
-                arr[i][3] = data[idx++];
-            }
-            return arr;
-        }
-
-        int bytes() {
-            return cellCount() * BYTES_PER_CELL;
-        }
-
-        void clear() {
-            size = 0;
-        }
-
-        private void ensureCapacity(int wanted) {
-            if (wanted <= data.length) {
-                return;
-            }
-            int newLen = Math.max(data.length * 2, wanted);
-            int[] next = new int[newLen];
-            System.arraycopy(data, 0, next, 0, size);
-            data = next;
-        }
     }
 
     @Override

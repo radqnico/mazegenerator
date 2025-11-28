@@ -1,5 +1,6 @@
 package it.nicoloscialpi.mazegenerator.command;
 
+import it.nicoloscialpi.mazegenerator.maze.TerrainHeightMap;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -35,6 +36,11 @@ public final class MazePreviewer {
         int step = Math.max(1, Math.min(4, cellSize)); // denser for small cells, capped for big mazes
         int maxParticles = 1400;
         double baseY = origin.getY();
+        int[][] heights = null;
+        if (layDown) {
+            var sample = TerrainHeightMap.compute(world, origin.getBlockX(), origin.getBlockZ(), origin.getBlockY(), cellSize, mazeSizeX, mazeSizeZ, wallHeight);
+            heights = sample.valid() ? sample.heights() : null;
+        }
         Particle.DustOptions outlineDust = new Particle.DustOptions(Color.fromRGB(255, 64, 64), 1.2f);
         Particle.DustOptions topDust = new Particle.DustOptions(Color.fromRGB(64, 160, 255), 1.1f);
         Particle.DustOptions diagDust = new Particle.DustOptions(Color.fromRGB(120, 255, 120), 0.9f);
@@ -46,26 +52,37 @@ public final class MazePreviewer {
 
         int count = 0;
         for (int dx = 0; dx <= width && count < maxParticles; dx += step) {
-            perimeter.add(new Location(world, origin.getX() + dx, baseY, origin.getZ()));
-            perimeter.add(new Location(world, origin.getX() + dx, baseY, origin.getZ() + depth));
-            topOutline.add(new Location(world, origin.getX() + dx, baseY + wallHeight + 1, origin.getZ()));
-            topOutline.add(new Location(world, origin.getX() + dx, baseY + wallHeight + 1, origin.getZ() + depth));
+            double yBaseNear = heightFor(heights, cellSize, dx, 0, baseY) + (layDown ? 0.5 : 0.0);
+            double yBaseFar = heightFor(heights, cellSize, dx, depth, baseY) + (layDown ? 0.5 : 0.0);
+            double yTopNear = yBaseNear + wallHeight + 1;
+            double yTopFar = yBaseFar + wallHeight + 1;
+            perimeter.add(new Location(world, origin.getX() + dx, yBaseNear, origin.getZ()));
+            perimeter.add(new Location(world, origin.getX() + dx, yBaseFar, origin.getZ() + depth));
+            topOutline.add(new Location(world, origin.getX() + dx, yTopNear, origin.getZ()));
+            topOutline.add(new Location(world, origin.getX() + dx, yTopFar, origin.getZ() + depth));
             count += 2;
         }
         for (int dz = 0; dz <= depth && count < maxParticles; dz += step) {
-            perimeter.add(new Location(world, origin.getX(), baseY, origin.getZ() + dz));
-            perimeter.add(new Location(world, origin.getX() + width, baseY, origin.getZ() + dz));
-            topOutline.add(new Location(world, origin.getX(), baseY + wallHeight + 1, origin.getZ() + dz));
-            topOutline.add(new Location(world, origin.getX() + width, baseY + wallHeight + 1, origin.getZ() + dz));
+            double yBaseNear = heightFor(heights, cellSize, 0, dz, baseY) + (layDown ? 0.5 : 0.0);
+            double yBaseFar = heightFor(heights, cellSize, width, dz, baseY) + (layDown ? 0.5 : 0.0);
+            double yTopNear = yBaseNear + wallHeight + 1;
+            double yTopFar = yBaseFar + wallHeight + 1;
+            perimeter.add(new Location(world, origin.getX(), yBaseNear, origin.getZ() + dz));
+            perimeter.add(new Location(world, origin.getX() + width, yBaseFar, origin.getZ() + dz));
+            topOutline.add(new Location(world, origin.getX(), yTopNear, origin.getZ() + dz));
+            topOutline.add(new Location(world, origin.getX() + width, yTopFar, origin.getZ() + dz));
             count += 2;
         }
 
         // Diagonal cross lines across footprint for orientation
         for (int d = 0; d <= Math.max(width, depth) && count < maxParticles; d += Math.max(2, step)) {
-            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + 0.2, origin.getZ() + Math.min(d, depth)));
-            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + wallHeight + 1, origin.getZ() + Math.min(d, depth)));
-            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + 0.2, origin.getZ() + Math.max(0, depth - Math.min(d, depth))));
-            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + wallHeight + 1, origin.getZ() + Math.max(0, depth - Math.min(d, depth))));
+            int rel = Math.min(d, Math.max(width, depth));
+            double yDiag1 = heightFor(heights, cellSize, rel, rel, baseY) + (layDown ? 0.5 : 0.2);
+            double yDiag2 = heightFor(heights, cellSize, rel, Math.max(0, depth - rel), baseY) + (layDown ? 0.5 : 0.2);
+            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), yDiag1, origin.getZ() + Math.min(d, depth)));
+            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), yDiag1 + wallHeight + 1, origin.getZ() + Math.min(d, depth)));
+            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), yDiag2, origin.getZ() + Math.max(0, depth - Math.min(d, depth))));
+            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), yDiag2 + wallHeight + 1, origin.getZ() + Math.max(0, depth - Math.min(d, depth))));
             count += 4;
         }
 
@@ -78,8 +95,8 @@ public final class MazePreviewer {
         for (int[] c : corners) {
             int dy = heightLimit;
             while (count < maxParticles) {
-                double baseYOffset = layDown ? 0.0 : 1.0;
-                heightLines.add(new Location(world, origin.getX() + c[0], baseY + dy + baseYOffset, origin.getZ() + c[1]));
+                double columnBase = heightFor(heights, cellSize, c[0], c[1], baseY) + (layDown ? 0.0 : 1.0);
+                heightLines.add(new Location(world, origin.getX() + c[0], columnBase + dy, origin.getZ() + c[1]));
                 count++;
                 if (dy == 0) {
                     break; // reached ground
@@ -122,5 +139,12 @@ public final class MazePreviewer {
             if (viewerLoc.distanceSquared(loc) > MAX_VIEW_DISTANCE_SQ) continue;
             w.spawnParticle(Particle.END_ROD, loc.getX(), loc.getY(), loc.getZ(), 1, 0, 0, 0, 0);
         }
+    }
+
+    private static double heightFor(int[][] heights, int cellSize, int dx, int dz, double fallback) {
+        if (heights == null || cellSize <= 0) return fallback;
+        int r = Math.min(Math.max(dx / cellSize, 0), heights.length - 1);
+        int c = Math.min(Math.max(dz / cellSize, 0), heights[0].length - 1);
+        return heights[r][c];
     }
 }
