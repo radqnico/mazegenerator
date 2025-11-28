@@ -119,6 +119,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage("No pending maze. Use /maze first to preview.");
                 return true;
             }
+            MazePreviewer.stopPreview(p);
             startBuild(sender, pending.options, pending.theme, pending.origin);
             return true;
         }
@@ -126,6 +127,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         // Subcommand: cancel
         if (args.length > 0 && args[0].equalsIgnoreCase("cancel")) {
             if (sender instanceof Player p) {
+                MazePreviewer.stopPreview(p);
                 if (PENDING.remove(p.getUniqueId()) != null) {
                     sender.sendMessage("Pending maze cancelled.");
                 } else {
@@ -184,9 +186,11 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             // Store pending build and show preview particles
+            PENDING.remove(p.getUniqueId());
+            MazePreviewer.stopPreview(p);
             PendingBuild pending = new PendingBuild(opt, theme, origin);
             PENDING.put(p.getUniqueId(), pending);
-            MazePreviewer.showPreview(p, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize);
+            MazePreviewer.showPreview(plugin, p, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight);
             sender.sendMessage("Preview shown with particles (enable them). Use /maze confirm to start or /maze cancel to discard.");
         } catch (Exception e) {
             sender.sendMessage("An unexpected plugin error occurred. Please contact the developer on Modrinth with your command details.");
@@ -196,6 +200,9 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
     }
 
     private void startBuild(CommandSender sender, MazeOptions opt, Theme theme, Location origin) {
+        if (sender instanceof Player p) {
+            MazePreviewer.stopPreview(p);
+        }
         MazeStreamPlacer streamPlacer = new MazeStreamPlacer(
                 theme,
                 origin,
