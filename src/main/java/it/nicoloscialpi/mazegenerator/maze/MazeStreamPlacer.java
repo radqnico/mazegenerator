@@ -47,9 +47,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
 
     private final boolean deferWallFill = MazeGeneratorPlugin.plugin.getConfig().getBoolean("defer-wall-fill", false);
     private final long pendingMemoryBudgetBytes;
-    private final boolean diskSpillEnabled;
-    private final long diskSpillMaxBytes;
-    private final Path spillFilePath;
+    private final SpillStorage spillStorage;
     private final long totalCells;
     private boolean carvingDone = false;
     private int fillR = 0;
@@ -57,8 +55,6 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
     private final BitSet carved = new BitSet();
     private long filledWalls = 0;
     private long pendingBytes = 0;
-    private BufferedWriter spillWriter;
-    private long spillFileBytes = 0;
 
     public MazeStreamPlacer(Theme theme,
                             Location location,
@@ -99,17 +95,14 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                 8L * 1024L * 1024L
         );
         org.bukkit.configuration.ConfigurationSection diskSpill = MazeGeneratorPlugin.plugin.getConfig().getConfigurationSection("disk-spill");
-        this.diskSpillEnabled = diskSpill != null && diskSpill.getBoolean("enabled", false);
-        this.diskSpillMaxBytes = SizeParser.parseToBytes(
+        boolean diskEnabled = diskSpill != null && diskSpill.getBoolean("enabled", false);
+        long diskMaxBytes = SizeParser.parseToBytes(
                 diskSpill != null ? diskSpill.getString("max-file-size", "128M") : "128M",
                 128L * 1024L * 1024L
         );
         Path spillDir = MazeGeneratorPlugin.plugin.getDataFolder().toPath().resolve("spillover");
-        try {
-            Files.createDirectories(spillDir);
-        } catch (IOException ignored) {
-        }
-        this.spillFilePath = spillDir.resolve("maze-spill-" + System.currentTimeMillis() + ".yml");
+        this.spillStorage = new SpillStorage(diskEnabled, diskMaxBytes,
+                spillDir.resolve("maze-spill-" + System.currentTimeMillis() + ".yml"));
         this.totalCells = (long) this.sizeN * (long) this.sizeM;
         if (layDown) {
             var sample = TerrainHeightMap.compute(world, baseX, baseZ, baseY, cellSize, this.sizeN, this.sizeM, height);
@@ -270,49 +263,13 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
     private boolean attemptSpill(Map<Long, CellGroupBuffer> groups,
                                  long chunkKey,
                                  CellGroupBuffer buffer) {
-        if (!diskSpillEnabled || buffer.cellCount() == 0) {
-            return false;
-        }
-        long estimatedAppend = estimateSpillBytes(buffer);
-        if (spillFileBytes + estimatedAppend > diskSpillMaxBytes) {
-            return false;
-        }
-        try {
-            ensureSpillWriter();
-            int cx = (int) (chunkKey >> 32);
-            int cz = (int) chunkKey;
-            for (int i = 0; i < buffer.size; i += 4) {
-                int worldX = buffer.data[i];
-                int worldY = buffer.data[i + 1];
-                int worldZ = buffer.data[i + 2];
-                int type = buffer.data[i + 3];
-                String line = "- [" + cx + ", " + cz + ", " + worldX + ", " + worldY + ", " + worldZ + ", " + type + "]\n";
-                spillWriter.write(line);
-                spillFileBytes += line.getBytes(StandardCharsets.UTF_8).length;
-            }
-            spillWriter.flush();
+        if (spillStorage.writeChunk(chunkKey, buffer)) {
             pendingBytes = Math.max(0, pendingBytes - buffer.bytes());
             groups.remove(chunkKey);
             buffer.clear();
             return true;
-        } catch (IOException e) {
-            return false;
         }
-    }
-
-    private long estimateSpillBytes(CellGroupBuffer buffer) {
-        // Approximate YAML line length per cell
-        int perLine = 50;
-        return (long) perLine * buffer.cellCount();
-    }
-
-    private void ensureSpillWriter() throws IOException {
-        if (spillWriter != null) {
-            return;
-        }
-        spillWriter = Files.newBufferedWriter(spillFilePath, StandardCharsets.UTF_8);
-        spillWriter.write("cells:\n");
-        spillFileBytes = "cells:\n".getBytes(StandardCharsets.UTF_8).length;
+        return false;
     }
 
     private long chunkKeyFor(int worldX, int worldZ) {
@@ -324,51 +281,16 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
     private void drainSpillFileToJobs(List<LoadBalancerJob> jobs,
                                       boolean setBlockData,
                                       int effectiveCellsPerJob) {
-        if (spillWriter != null) {
-            try {
-                spillWriter.close();
-            } catch (IOException ignored) {
+        spillStorage.closeQuietly();
+        Map<Long, CellGroupBuffer> fromDisk = spillStorage.readAll();
+        for (var e : fromDisk.entrySet()) {
+            long key = e.getKey();
+            CellGroupBuffer buffer = e.getValue();
+            if (buffer.cellCount() >= effectiveCellsPerJob) {
+                flushGroup(fromDisk, jobs, key, setBlockData);
             }
-            spillWriter = null;
         }
-        if (!Files.exists(spillFilePath)) {
-            return;
-        }
-        Map<Long, CellGroupBuffer> fromDisk = new HashMap<>();
-        try {
-            List<String> lines = Files.readAllLines(spillFilePath, StandardCharsets.UTF_8);
-            for (String raw : lines) {
-                String line = raw.trim();
-                if (!line.startsWith("- [")) {
-                    continue;
-                }
-                String inner = line.substring(3, line.length() - 1);
-                String[] parts = inner.split(",");
-                if (parts.length != 6) {
-                    continue;
-                }
-                int cx = Integer.parseInt(parts[0].trim());
-                int cz = Integer.parseInt(parts[1].trim());
-                int worldX = Integer.parseInt(parts[2].trim());
-                int worldY = Integer.parseInt(parts[3].trim());
-                int worldZ = Integer.parseInt(parts[4].trim());
-                int type = Integer.parseInt(parts[5].trim());
-                long key = (((long) cx) << 32) ^ (cz & 0xffffffffL);
-                CellGroupBuffer buffer = fromDisk.computeIfAbsent(key, k -> new CellGroupBuffer());
-                buffer.add(worldX, worldY, worldZ, type);
-                if (buffer.cellCount() >= effectiveCellsPerJob) {
-                    flushGroup(fromDisk, jobs, key, setBlockData);
-                }
-            }
-            flushRemainingGroups(fromDisk, jobs, setBlockData);
-        } catch (Exception ignored) {
-        } finally {
-            try {
-                Files.deleteIfExists(spillFilePath);
-            } catch (IOException ignored) {
-            }
-            spillFileBytes = 0;
-        }
+        flushRemainingGroups(fromDisk, jobs, setBlockData);
     }
 
     private static final class CellGroupBuffer {
