@@ -320,7 +320,13 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             Theme theme = Themes.getTheme(opt.themeName);
             Location origin = new Location(sender.getServer().getWorld(opt.world), opt.x, opt.y, opt.z);
             if (!(sender instanceof Player p)) {
-                sender.sendMessage("Only players can preview and confirm mazes. Use in-game.");
+                boolean hasCoords = hasCoordArgs(args);
+                if (!hasCoords) {
+                    sender.sendMessage("Console usage requires x:, y:, z: coordinates and world: if needed.");
+                    return true;
+                }
+                // Console: no preview/confirm, build immediately
+                startBuild(sender, opt, theme, origin);
                 return true;
             }
 
@@ -343,5 +349,17 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             sender.getServer().getLogger().severe(e.toString());
         }
         return true;
+    }
+
+    private boolean hasCoordArgs(String[] args) {
+        boolean hasX = false, hasY = false, hasZ = false;
+        for (String a : args) {
+            if (a == null) continue;
+            String lower = a.toLowerCase(Locale.ROOT);
+            if (lower.startsWith("x:")) hasX = true;
+            if (lower.startsWith("y:")) hasY = true;
+            if (lower.startsWith("z:")) hasZ = true;
+        }
+        return hasX && hasY && hasZ;
     }
 }
