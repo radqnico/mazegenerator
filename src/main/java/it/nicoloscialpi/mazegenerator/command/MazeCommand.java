@@ -314,6 +314,12 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             if (last.isEmpty() || "stop".startsWith(lastLower)) {
                 out.add("stop");
             }
+            if (last.isEmpty() || "confirm".startsWith(lastLower)) {
+                out.add("confirm");
+            }
+            if (last.isEmpty() || "cancel".startsWith(lastLower)) {
+                out.add("cancel");
+            }
             if (last.isEmpty() || "status".startsWith(lastLower)) {
                 out.add("status");
             }
