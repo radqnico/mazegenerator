@@ -9,6 +9,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class ChunkLoadLimiter {
 
     private static int remainingLoads = 0;
+    private static int budgetPerTick = 0;
+    private static int consumedLoads = 0;
     private static boolean forceChunkLoad = true;
     private static JavaPlugin plugin;
 
@@ -20,7 +22,9 @@ public final class ChunkLoadLimiter {
 
     public static void resetBudget() {
         if (plugin == null) return;
-        remainingLoads = Math.max(0, plugin.getConfig().getInt("chunk-loads-per-tick", 0));
+        budgetPerTick = Math.max(0, plugin.getConfig().getInt("chunk-loads-per-tick", 0));
+        remainingLoads = budgetPerTick;
+        consumedLoads = 0;
         forceChunkLoad = plugin.getConfig().getBoolean("force-chunk-load", true);
     }
 
@@ -37,7 +41,20 @@ public final class ChunkLoadLimiter {
             return false;
         }
         remainingLoads--;
+        consumedLoads++;
         world.getChunkAt(chunkX, chunkZ);
         return true;
+    }
+
+    public static int getRemainingLoads() {
+        return remainingLoads;
+    }
+
+    public static int getBudgetPerTick() {
+        return budgetPerTick;
+    }
+
+    public static int getConsumedLoads() {
+        return consumedLoads;
     }
 }

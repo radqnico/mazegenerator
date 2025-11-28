@@ -72,10 +72,22 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
 
     private Optional<String> validate(MazeOptions o, CommandSender sender) {
         if (o.mazeSizeX < 1 || o.mazeSizeZ < 1) return Optional.of("Invalid maze size");
+        if (o.mazeSizeX > 501 || o.mazeSizeZ > 501) return Optional.of("Maze size too large (max 501 per axis)");
         if (o.cellSize < 1 || o.wallHeight < 1) return Optional.of("Invalid cellSize/wallHeight");
+        if (o.cellSize > 32) return Optional.of("cellSize too large (max 32)");
+        if (o.wallHeight > 32) return Optional.of("wallHeight too large (max 32)");
         if (o.erosion < 0.0 || o.erosion > 1.0) return Optional.of("Erosion must be in [0,1]");
         World w = sender.getServer().getWorld(o.world);
         if (w == null) return Optional.of("World not found: " + o.world);
+        int minY = w.getMinHeight();
+        int maxY = w.getMaxHeight() - 1;
+        if (o.y < minY || (o.y + o.wallHeight) > maxY) {
+            int maxBaseY = maxY - o.wallHeight;
+            return Optional.of("Y is out of build range for this world (allowed " + minY + ".." + maxBaseY + ")");
+        }
+        if (Themes.getThemes() == null || !Themes.getThemes().containsKey(o.themeName)) {
+            return Optional.of("Unknown theme: " + o.themeName);
+        }
         return Optional.empty();
     }
 
@@ -90,6 +102,17 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         if (args.length > 0 && args[0].equalsIgnoreCase("stop")) {
             it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.stopAll();
             sender.sendMessage(MessageFileReader.getMessage("job-stopped"));
+            return true;
+        }
+
+        // Subcommand: status
+        if (args.length > 0 && args[0].equalsIgnoreCase("status")) {
+            it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer lb = it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.getFor(sender);
+            if (lb == null) {
+                sender.sendMessage("No active maze for you right now.");
+            } else {
+                sender.sendMessage(String.format("Maze progress: %.2f%% (budget %dms)", lb.getProgressPercentage(), lb.getCurrentMillisPerTick()));
+            }
             return true;
         }
 
@@ -153,12 +176,12 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         String[] lines = new String[]{
                 "--- MazeGenerator Help ---",
                 "Usage: /maze key:value [key:value ...]",
-                "Subcommands: /maze help, /maze stop, /maze reload",
+                "Subcommands: /maze help, /maze stop, /maze status, /maze reload",
                 "",
                 "Core keys:",
                 "  x,y,z,world          -> placement origin",
                 "  mazeSizeX,mazeSizeZ  -> maze size in cells (odd enforced)",
-                "  cellSize,wallHeight  -> cell footprint and wall height",
+                "  cellSize,wallHeight  -> cell footprint and wall height (default 1/3)",
                 "  hasExits,additionalExits,hasRoom,roomSizeX,roomSizeZ",
                 "  erosion              -> 0..1 occasional holes",
                 "  closed,hollow        -> roof over paths / shell walls",
@@ -170,8 +193,8 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 "",
                 "Tips:",
                 "  - Use hollow:true and larger cellSize to reduce blocks",
-                "  - Tweak config.yml (millis-per-tick, jobs-batch-cells) to protect TPS",
-                "  - /maze stop cancels active builds",
+                "  - Tweak config.yml (millis-per-tick, jobs-batch-cells, max-blocks-per-job) to protect TPS",
+                "  - /maze stop cancels active builds; /maze status shows progress",
                 "  - /maze reload reloads config, messages, themes"
         };
         for (String line : lines) sender.sendMessage(line);
@@ -207,6 +230,21 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 case "themename":
                     Themes.getThemes().keySet().forEach(t -> suggestions.add("themeName:" + t));
                     break;
+                case "hasexits":
+                case "hasroom":
+                case "closed":
+                case "hollow":
+                    suggestions.add(key + ":true");
+                    suggestions.add(key + ":false");
+                    break;
+                case "cellsize":
+                    suggestions.add("cellSize:1");
+                    suggestions.add("cellSize:2");
+                    break;
+                case "wallheight":
+                    suggestions.add("wallHeight:3");
+                    suggestions.add("wallHeight:4");
+                    break;
                 default:
                     break;
             }
@@ -218,11 +256,14 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         for (String k : suggestions) {
             out.add(k + ":");
         }
-        // Suggest 'stop' only for the first token (no key:value yet)
+        // Suggest 'stop/status/help/reload' only for the first token (no key:value yet)
         if (args.length == 0 || (args.length == 1 && !last.contains(":"))) {
             String lastLower = last.toLowerCase();
             if (last.isEmpty() || "stop".startsWith(lastLower)) {
                 out.add("stop");
+            }
+            if (last.isEmpty() || "status".startsWith(lastLower)) {
+                out.add("status");
             }
             if (last.isEmpty() || "help".startsWith(lastLower)) {
                 out.add("help");

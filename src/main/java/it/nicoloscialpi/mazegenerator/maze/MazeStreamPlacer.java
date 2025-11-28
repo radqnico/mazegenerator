@@ -73,7 +73,10 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         int batch = Math.max(1, MazeGeneratorPlugin.plugin.getConfig().getInt("jobs-batch-cells", 256));
         boolean setBlockData = MazeGeneratorPlugin.plugin.getConfig().getBoolean("set-block-data", false);
         int cellsPerJob = Math.max(1, MazeGeneratorPlugin.plugin.getConfig().getInt("cells-per-job", 16));
-        ArrayList<LoadBalancerJob> jobs = new ArrayList<>(Math.max(1, batch / cellsPerJob));
+        int maxBlocksPerJob = Math.max(64, MazeGeneratorPlugin.plugin.getConfig().getInt("max-blocks-per-job", 2048));
+        int blocksPerCell = Math.max(1, cellSize * cellSize * (height + 1));
+        int effectiveCellsPerJob = Math.max(1, Math.min(cellsPerJob, Math.max(1, maxBlocksPerJob / blocksPerCell)));
+        ArrayList<LoadBalancerJob> jobs = new ArrayList<>(Math.max(1, batch / effectiveCellsPerJob));
         java.util.HashMap<Long, java.util.ArrayList<int[]>> groups = new java.util.HashMap<>();
         final int worldY = location.getBlockY();
         final int baseX = location.getBlockX();
@@ -83,7 +86,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
             long chunkKey = key.longValue();
             var list = groups.computeIfAbsent(chunkKey, k2 -> new java.util.ArrayList<>());
             list.add(cell);
-            if (list.size() >= cellsPerJob) {
+            if (list.size() >= effectiveCellsPerJob) {
                 int[][] arr = list.toArray(new int[0][]);
                 int cx = (int) (chunkKey >> 32);
                 int cz = (int) chunkKey;

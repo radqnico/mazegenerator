@@ -2,8 +2,14 @@ package it.nicoloscialpi.mazegenerator.loadbalancer;
 
 import it.nicoloscialpi.mazegenerator.MessageFileReader;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.boss.BossBar;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import net.kyori.adventure.text.Component;
 
 import java.util.ArrayDeque;
 import java.util.List;
@@ -39,6 +45,8 @@ public class LoadBalancer extends BukkitRunnable {
     private final int statusEveryJobs;
     private long lastStatusAtIterations = 0;
     private double spareNanosAvg = 0;
+    private final Player playerTarget;
+    private BossBar bossBar;
 
     public LoadBalancer(JavaPlugin plugin, CommandSender commandSender, JobProducer jobProducer) {
         this.plugin = plugin;
@@ -48,6 +56,7 @@ public class LoadBalancer extends BukkitRunnable {
         }
         ChunkLoadLimiter.init(plugin);
         this.commandSender = commandSender;
+        this.playerTarget = commandSender instanceof Player p ? p : null;
         this.mutex = new Semaphore(1);
         this.jobs = new ArrayDeque<>();
         this.iterations = 0;
@@ -77,6 +86,12 @@ public class LoadBalancer extends BukkitRunnable {
         jobs.addAll(jobProducer.getJobs());
         ACTIVE.add(this);
         ChunkLoadLimiter.resetBudget();
+        if (playerTarget != null) {
+            bossBar = Bukkit.createBossBar("Maze build", BarColor.BLUE, BarStyle.SOLID);
+            bossBar.addPlayer(playerTarget);
+            bossBar.setProgress(0.0);
+            bossBar.setVisible(true);
+        }
         runTaskTimer(plugin, 0L, 1L);
     }
 
@@ -94,6 +109,7 @@ public class LoadBalancer extends BukkitRunnable {
                 if (commandSender != null) {
                     commandSender.sendMessage(MessageFileReader.getMessage("job-done"));
                 }
+                cleanupBars();
                 this.cancel();
                 ACTIVE.remove(this);
                 return;
@@ -138,10 +154,7 @@ public class LoadBalancer extends BukkitRunnable {
                     iterations++;
                     if (commandSender != null && (iterations - lastStatusAtIterations) >= statusEveryJobs) {
                         double percentage = jobProducer.getProgressPercentage();
-                        commandSender.sendMessage(
-                                MessageFileReader.getMessage("job-status")
-                                        .replace("%percentage%", String.format("%.2f", percentage))
-                        );
+                        sendStatus(percentage);
                         lastStatusAtIterations = iterations;
                     }
                 }
@@ -174,6 +187,7 @@ public class LoadBalancer extends BukkitRunnable {
             }
             this.cancel();
         } finally {
+            cleanupBars();
             ACTIVE.remove(this);
         }
     }
@@ -181,6 +195,58 @@ public class LoadBalancer extends BukkitRunnable {
     public static void stopAll() {
         for (LoadBalancer lb : ACTIVE.toArray(new LoadBalancer[0])) {
             lb.stopNow();
+        }
+    }
+
+    public static LoadBalancer getFor(CommandSender sender) {
+        for (LoadBalancer lb : ACTIVE) {
+            if (lb.commandSender == sender) {
+                return lb;
+            }
+            if (sender instanceof Player p && lb.playerTarget != null && lb.playerTarget.getUniqueId().equals(p.getUniqueId())) {
+                return lb;
+            }
+        }
+        return null;
+    }
+
+    public double getProgressPercentage() {
+        return jobProducer.getProgressPercentage();
+    }
+
+    public int getCurrentMillisPerTick() {
+        return currentMillisPerTick;
+    }
+
+    private void sendStatus(double percentage) {
+        String chat = MessageFileReader.getMessage("job-status")
+                .replace("%percentage%", String.format("%.2f", percentage))
+                + " [chunk loads: " + ChunkLoadLimiter.getConsumedLoads() + "/" + ChunkLoadLimiter.getBudgetPerTick()
+                + ", budget: " + currentMillisPerTick + "ms]";
+        commandSender.sendMessage(chat);
+        if (playerTarget != null) {
+            double clamped = Math.max(0.0, Math.min(1.0, percentage / 100.0));
+            playerTarget.sendActionBar(Component.text(String.format("Maze build: %.2f%%", percentage)));
+            if (bossBar != null) {
+                bossBar.setProgress(clamped);
+                bossBar.setTitle(String.format("Maze build: %.2f%%", percentage));
+            }
+        }
+        // Console instrumentation
+        plugin.getLogger().info("[MazeGen] " + String.format("%.2f", percentage) + "%, "
+                + "jobs queue: " + jobs.size()
+                + ", chunk loads this tick: " + ChunkLoadLimiter.getConsumedLoads() + "/" + ChunkLoadLimiter.getBudgetPerTick()
+                + ", budget " + currentMillisPerTick + "ms");
+    }
+
+    private void cleanupBars() {
+        if (bossBar != null) {
+            bossBar.removeAll();
+            bossBar.setVisible(false);
+            bossBar = null;
+        }
+        if (playerTarget != null) {
+            playerTarget.sendActionBar(Component.text("Maze build finished."));
         }
     }
 }
