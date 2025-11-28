@@ -48,15 +48,15 @@ public final class MazePreviewer {
         for (int dx = 0; dx <= width && count < maxParticles; dx += step) {
             perimeter.add(new Location(world, origin.getX() + dx, baseY, origin.getZ()));
             perimeter.add(new Location(world, origin.getX() + dx, baseY, origin.getZ() + depth));
-            topOutline.add(new Location(world, origin.getX() + dx, baseY + wallHeight, origin.getZ()));
-            topOutline.add(new Location(world, origin.getX() + dx, baseY + wallHeight, origin.getZ() + depth));
+            topOutline.add(new Location(world, origin.getX() + dx, baseY + wallHeight + 1, origin.getZ()));
+            topOutline.add(new Location(world, origin.getX() + dx, baseY + wallHeight + 1, origin.getZ() + depth));
             count += 2;
         }
         for (int dz = 0; dz <= depth && count < maxParticles; dz += step) {
             perimeter.add(new Location(world, origin.getX(), baseY, origin.getZ() + dz));
             perimeter.add(new Location(world, origin.getX() + width, baseY, origin.getZ() + dz));
-            topOutline.add(new Location(world, origin.getX(), baseY + wallHeight, origin.getZ() + dz));
-            topOutline.add(new Location(world, origin.getX() + width, baseY + wallHeight, origin.getZ() + dz));
+            topOutline.add(new Location(world, origin.getX(), baseY + wallHeight + 1, origin.getZ() + dz));
+            topOutline.add(new Location(world, origin.getX() + width, baseY + wallHeight + 1, origin.getZ() + dz));
             count += 2;
         }
 
@@ -119,7 +119,7 @@ public final class MazePreviewer {
             if (w == null) continue;
             if (viewerLoc.getWorld() != null && !viewerLoc.getWorld().equals(w)) continue;
             if (viewerLoc.distanceSquared(loc) > MAX_VIEW_DISTANCE_SQ) continue;
-            w.spawnParticle(Particle.DUST, loc.getX(), loc.getY(), loc.getZ(), 1, 0, 0, 0, 0, dust);
+            w.spawnParticle(Particle.END_ROD, loc.getX(), loc.getY(), loc.getZ(), 1, 0, 0, 0, 0);
         }
     }
 }
