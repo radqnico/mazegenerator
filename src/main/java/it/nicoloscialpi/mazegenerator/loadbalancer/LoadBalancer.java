@@ -42,8 +42,10 @@ public class LoadBalancer extends BukkitRunnable {
     private final int decStep;
     private final int spareHigh;
     private final int spareLow;
-    private long lastStatusAtMillis = 0;
-    private static final long STATUS_MIN_INTERVAL_MS = 60_000L;
+    private long lastChatAtMillis = 0;
+    private long lastBarAtMillis = 0;
+    private static final long CHAT_INTERVAL_MS = 60_000L;
+    private static final long BAR_INTERVAL_MS = 1_000L;
     private double spareNanosAvg = 0;
     private final Player playerTarget;
     private BossBar bossBar;
@@ -152,10 +154,20 @@ public class LoadBalancer extends BukkitRunnable {
                     executedThisTick = true;
                     iterations++;
                 }
-                if (commandSender != null && shouldSendStatus()) {
-                    double percentage = jobProducer.getProgressPercentage();
-                    sendStatus(percentage);
-                    lastStatusAtMillis = System.currentTimeMillis();
+                if (commandSender != null) {
+                    boolean sendChat = shouldSendChat();
+                    boolean sendBars = shouldSendBars();
+                    if (sendChat || sendBars) {
+                        double percentage = jobProducer.getProgressPercentage();
+                        if (sendChat) {
+                            sendChatStatus(percentage);
+                            lastChatAtMillis = System.currentTimeMillis();
+                        }
+                        if (sendBars) {
+                            sendBarStatus(percentage);
+                            lastBarAtMillis = System.currentTimeMillis();
+                        }
+                    }
                 }
             }
             // Top-up jobs if queue is low
@@ -197,9 +209,15 @@ public class LoadBalancer extends BukkitRunnable {
         }
     }
 
-    private boolean shouldSendStatus() {
+    private boolean shouldSendChat() {
         long now = System.currentTimeMillis();
-        return (now - lastStatusAtMillis) >= STATUS_MIN_INTERVAL_MS;
+        return (now - lastChatAtMillis) >= CHAT_INTERVAL_MS;
+    }
+
+    private boolean shouldSendBars() {
+        if (playerTarget == null) return false;
+        long now = System.currentTimeMillis();
+        return (now - lastBarAtMillis) >= BAR_INTERVAL_MS;
     }
 
     public static LoadBalancer getFor(CommandSender sender) {
@@ -222,25 +240,27 @@ public class LoadBalancer extends BukkitRunnable {
         return currentMillisPerTick;
     }
 
-    private void sendStatus(double percentage) {
+    private void sendChatStatus(double percentage) {
         String chat = MessageFileReader.getMessage("job-status")
                 .replace("%percentage%", String.format("%.2f", percentage))
                 + " [chunk loads: " + ChunkLoadLimiter.getConsumedLoads() + "/" + ChunkLoadLimiter.getBudgetPerTick()
                 + ", budget: " + currentMillisPerTick + "ms]";
         commandSender.sendMessage(chat);
-        if (playerTarget != null) {
-            double clamped = Math.max(0.0, Math.min(1.0, percentage / 100.0));
-            playerTarget.sendActionBar(Component.text(String.format("Maze build: %.2f%%", percentage)));
-            if (bossBar != null) {
-                bossBar.setProgress(clamped);
-                bossBar.setTitle(String.format("Maze build: %.2f%%", percentage));
-            }
-        }
         // Console instrumentation
         plugin.getLogger().info("[MazeGen] " + String.format("%.2f", percentage) + "%, "
                 + "jobs queue: " + jobs.size()
                 + ", chunk loads this tick: " + ChunkLoadLimiter.getConsumedLoads() + "/" + ChunkLoadLimiter.getBudgetPerTick()
                 + ", budget " + currentMillisPerTick + "ms");
+    }
+
+    private void sendBarStatus(double percentage) {
+        if (playerTarget == null) return;
+        double clamped = Math.max(0.0, Math.min(1.0, percentage / 100.0));
+        playerTarget.sendActionBar(Component.text(String.format("Maze build: %.2f%%", percentage)));
+        if (bossBar != null) {
+            bossBar.setProgress(clamped);
+            bossBar.setTitle(String.format("Maze build: %.2f%%", percentage));
+        }
     }
 
     private void cleanupBars() {
