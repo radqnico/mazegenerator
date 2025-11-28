@@ -18,7 +18,6 @@ chunk-loads-per-tick: 1
 force-chunk-load: true  # if true, loads up to chunk-loads-per-tick chunks per tick; if false, only places in already-loaded chunks
 cells-per-job: 16  # how many cells to pack into a single placement job (per chunk) to reduce scheduling overhead
 max-blocks-per-job: 2048  # hard cap on estimated block placements per job; auto-adjusts cells-per-job when cells are very large
-status-interval-jobs: 1000  # send a chat update roughly every N jobs executed
 
 # Adaptive placement memory and optional disk spillover for very large mazes
 placement-max-pending: "8M"  # rough cap on in-memory pending cell data before flushing early

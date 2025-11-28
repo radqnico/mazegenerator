@@ -42,8 +42,6 @@ public class LoadBalancer extends BukkitRunnable {
     private final int decStep;
     private final int spareHigh;
     private final int spareLow;
-    private final int statusEveryJobs;
-    private long lastStatusAtIterations = 0;
     private long lastStatusAtMillis = 0;
     private static final long STATUS_MIN_INTERVAL_MS = 60_000L;
     private double spareNanosAvg = 0;
@@ -71,7 +69,6 @@ public class LoadBalancer extends BukkitRunnable {
         this.decStep = Math.max(1, plugin.getConfig().getInt("autotune.decrease-step", 1));
         this.spareHigh = Math.max(0, plugin.getConfig().getInt("autotune.spare-high", 12));
         this.spareLow = Math.max(0, plugin.getConfig().getInt("autotune.spare-low", 6));
-        this.statusEveryJobs = Math.max(1, plugin.getConfig().getInt("status-interval-jobs", 1000));
     }
 
     // Active tasks tracking to allow /maze stop
@@ -158,7 +155,6 @@ public class LoadBalancer extends BukkitRunnable {
                 if (commandSender != null && shouldSendStatus()) {
                     double percentage = jobProducer.getProgressPercentage();
                     sendStatus(percentage);
-                    lastStatusAtIterations = iterations;
                     lastStatusAtMillis = System.currentTimeMillis();
                 }
             }
