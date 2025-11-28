@@ -1,5 +1,7 @@
 # MazeGenerator 🧩
 
+[Download on Modrinth](https://modrinth.com/plugin/mazegenerator)
+
 Build **massive, themed mazes** in Minecraft without freezing the server. The plugin generates the maze layout **incrementally** and places blocks **over time** with a configurable **per-tick budget**. Work is grouped per chunk, and chunks are only loaded on demand at the exact moment blocks need to be placed.
 
 * **Paper**
