@@ -6,17 +6,18 @@ public final class TerrainHeightMap {
 
     private TerrainHeightMap() {}
 
-    public static int[][] compute(World world,
-                                  int baseX,
-                                  int baseZ,
-                                  int baseY,
-                                  int cellSize,
-                                  int sizeN,
-                                  int sizeM,
-                                  int wallHeight) {
+    public static TerrainSample compute(World world,
+                                        int baseX,
+                                        int baseZ,
+                                        int baseY,
+                                        int cellSize,
+                                        int sizeN,
+                                        int sizeM,
+                                        int wallHeight) {
         int[][] heights = new int[sizeN][sizeM];
         int minY = world.getMinHeight();
         int maxY = world.getMaxHeight() - wallHeight - 1;
+        boolean hasGround = false;
 
         // Initial sampling at cell center
         for (int r = 0; r < sizeN; r++) {
@@ -24,10 +25,19 @@ public final class TerrainHeightMap {
                 int worldX = baseX + r * cellSize + Math.max(0, cellSize / 2);
                 int worldZ = baseZ + c * cellSize + Math.max(0, cellSize / 2);
                 int h = world.getHighestBlockYAt(worldX, worldZ);
-                h = Math.max(h, baseY);
-                h = Math.min(Math.max(minY, h), maxY);
-                heights[r][c] = h;
+                if (h <= world.getMinHeight()) {
+                    heights[r][c] = minY;
+                } else {
+                    hasGround = true;
+                    h = Math.max(h, baseY);
+                    h = Math.min(Math.max(minY, h), maxY);
+                    heights[r][c] = h;
+                }
             }
+        }
+
+        if (!hasGround) {
+            return new TerrainSample(null, false);
         }
 
         // Smooth to enforce walkable steps (max diff 1)
@@ -45,7 +55,7 @@ public final class TerrainHeightMap {
                 }
             }
         }
-        return heights;
+        return new TerrainSample(heights, true);
     }
 
     private static int clampStep(int current, int neighbor) {
@@ -53,4 +63,6 @@ public final class TerrainHeightMap {
         if (current < neighbor - 1) return neighbor - 1;
         return current;
     }
+
+    public record TerrainSample(int[][] heights, boolean valid) {}
 }

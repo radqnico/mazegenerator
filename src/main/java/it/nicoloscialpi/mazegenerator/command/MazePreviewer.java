@@ -25,7 +25,7 @@ public final class MazePreviewer {
     private static final double MAX_VIEW_DISTANCE = 50.0;
     private static final double MAX_VIEW_DISTANCE_SQ = MAX_VIEW_DISTANCE * MAX_VIEW_DISTANCE;
 
-    public static void showPreview(JavaPlugin plugin, Player player, Location origin, int mazeSizeX, int mazeSizeZ, int cellSize, int wallHeight) {
+    public static void showPreview(JavaPlugin plugin, Player player, Location origin, int mazeSizeX, int mazeSizeZ, int cellSize, int wallHeight, boolean layDown) {
         if (plugin == null || player == null || origin == null || player.getWorld() == null) return;
         stopPreview(player);
 
@@ -63,9 +63,9 @@ public final class MazePreviewer {
         // Diagonal cross lines across footprint for orientation
         for (int d = 0; d <= Math.max(width, depth) && count < maxParticles; d += Math.max(2, step)) {
             diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + 0.2, origin.getZ() + Math.min(d, depth)));
-            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + wallHeight, origin.getZ() + Math.min(d, depth)));
+            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + wallHeight + 1, origin.getZ() + Math.min(d, depth)));
             diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + 0.2, origin.getZ() + Math.max(0, depth - Math.min(d, depth))));
-            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + wallHeight, origin.getZ() + Math.max(0, depth - Math.min(d, depth))));
+            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + wallHeight + 1, origin.getZ() + Math.max(0, depth - Math.min(d, depth))));
             count += 4;
         }
 
@@ -78,7 +78,8 @@ public final class MazePreviewer {
         for (int[] c : corners) {
             int dy = heightLimit;
             while (count < maxParticles) {
-                heightLines.add(new Location(world, origin.getX() + c[0], baseY + dy, origin.getZ() + c[1]));
+                double baseYOffset = layDown ? 0.0 : 1.0;
+                heightLines.add(new Location(world, origin.getX() + c[0], baseY + dy + baseYOffset, origin.getZ() + c[1]));
                 count++;
                 if (dy == 0) {
                     break; // reached ground

@@ -329,6 +329,10 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 // Console: no preview/confirm, build immediately
+                if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
+                    sender.sendMessage("Cannot lay down maze here (no valid ground).");
+                    return true;
+                }
                 startBuild(sender, opt, theme, origin);
                 return true;
             }
@@ -336,6 +340,10 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             boolean requestConfirm = plugin.getConfig().getBoolean("request-confirm", true);
             if (!requestConfirm) {
                 MazePreviewer.stopPreview(p);
+                if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
+                    sender.sendMessage("Cannot lay down maze here (no valid ground).");
+                    return true;
+                }
                 startBuild(sender, opt, theme, origin);
                 sender.sendMessage(MessageFileReader.getMessage("build-no-preview"));
                 return true;
@@ -343,9 +351,13 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
 
             PENDING.remove(p.getUniqueId());
             MazePreviewer.stopPreview(p);
+            if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
+                sender.sendMessage("Cannot lay down maze here (no valid ground).");
+                return true;
+            }
             PendingBuild pending = new PendingBuild(opt, theme, origin);
             PENDING.put(p.getUniqueId(), pending);
-            MazePreviewer.showPreview(plugin, p, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight);
+            MazePreviewer.showPreview(plugin, p, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight, opt.layDown);
             sender.sendMessage("Preview shown with particles (enable them). Use /maze confirm to start or /maze cancel to discard.");
         } catch (Exception e) {
             sender.sendMessage("An unexpected plugin error occurred. Please contact the developer on Modrinth with your command details.");
