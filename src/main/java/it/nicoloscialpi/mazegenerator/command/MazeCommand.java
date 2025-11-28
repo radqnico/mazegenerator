@@ -24,7 +24,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             "cellSize","wallHeight",
             "hasExits","additionalExits",
             "hasRoom","roomSizeX","roomSizeZ",
-            "erosion","closed","hollow","themeName"
+            "erosion","closed","hollow","themeName","layDown"
     );
     private static final List<String> SUBCOMMANDS = Arrays.asList(
             "stop", "confirm", "cancel", "status", "help", "reload"
@@ -44,6 +44,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         boolean hasRoom = false; int roomSizeX = 3, roomSizeZ = 3;
         double erosion = 0.0; boolean closed = false; boolean hollow = false;
         String themeName = "desert";
+        boolean layDown = false;
     }
 
     private MazeOptions parseOptions(CommandSender sender, String[] args) {
@@ -71,6 +72,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         p.getString("themeName").ifPresent(v -> opt.themeName = v.toLowerCase(Locale.ROOT));
         p.getBool("closed").ifPresent(v -> opt.closed = v);
         p.getBool("hollow").ifPresent(v -> opt.hollow = v);
+        p.getBool("layDown").ifPresent(v -> opt.layDown = v);
         return opt;
     }
 
@@ -142,7 +144,8 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 opt.hasRoom,
                 opt.roomSizeX,
                 opt.roomSizeZ,
-                opt.hasExits
+                opt.hasExits,
+                opt.layDown
         );
         LoadBalancer lb = new LoadBalancer(plugin, sender, streamPlacer);
         lb.start();

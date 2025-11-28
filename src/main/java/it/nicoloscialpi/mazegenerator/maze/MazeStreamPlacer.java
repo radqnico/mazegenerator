@@ -5,6 +5,7 @@ import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancerJob;
 import it.nicoloscialpi.mazegenerator.loadbalancer.PhaseProgressSnapshot;
 import it.nicoloscialpi.mazegenerator.themes.Theme;
 import it.nicoloscialpi.mazegenerator.util.SizeParser;
+import it.nicoloscialpi.mazegenerator.maze.TerrainHeightMap;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -41,6 +42,8 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
     private final int roomSizeX;
     private final int roomSizeZ;
     private final boolean hasExits;
+    private final int[][] cellHeights;
+    private final boolean layDown;
 
     private final boolean deferWallFill = MazeGeneratorPlugin.plugin.getConfig().getBoolean("defer-wall-fill", false);
     private final long pendingMemoryBudgetBytes;
@@ -70,7 +73,8 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                             boolean hasRoom,
                             int roomSizeX,
                             int roomSizeZ,
-                            boolean hasExits) {
+                            boolean hasExits,
+                            boolean layDown) {
         this.theme = theme;
         this.location = location;
         this.world = location.getWorld();
@@ -89,6 +93,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         this.roomSizeX = roomSizeX;
         this.roomSizeZ = roomSizeZ;
         this.hasExits = hasExits;
+        this.layDown = layDown;
         this.pendingMemoryBudgetBytes = SizeParser.parseToBytes(
                 MazeGeneratorPlugin.plugin.getConfig().getString("placement-max-pending", "8M"),
                 8L * 1024L * 1024L
@@ -106,6 +111,11 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         }
         this.spillFilePath = spillDir.resolve("maze-spill-" + System.currentTimeMillis() + ".yml");
         this.totalCells = (long) this.sizeN * (long) this.sizeM;
+        if (layDown) {
+            this.cellHeights = TerrainHeightMap.compute(world, baseX, baseZ, baseY, cellSize, this.sizeN, this.sizeM, height);
+        } else {
+            this.cellHeights = null;
+        }
 
         this.generator = new IncrementalMazeGenerator(this.sizeN, this.sizeM,
                 additionalExits, erosion, hasRoom, roomSizeX, roomSizeZ, hasExits);
@@ -135,7 +145,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                     carved.set(r * sizeM + c);
                     int worldX = baseX + r * cellSize;
                     int worldZ = baseZ + c * cellSize;
-                    addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, baseY, worldZ, cell.type());
+                    addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, worldYFor(r, c), worldZ, cell.type());
                     collected++;
                     if (collected >= batch) break;
                     if (jobs.size() >= batch) break;
@@ -152,7 +162,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                     int c = fillC;
                     int worldX = baseX + r * cellSize;
                     int worldZ = baseZ + c * cellSize;
-                    addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, baseY, worldZ, IncrementalMazeGenerator.WALL);
+                    addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, worldYFor(r, c), worldZ, IncrementalMazeGenerator.WALL);
                     filledWalls++;
                     collected++;
                 }
@@ -174,7 +184,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                 int c = fillC;
                 int worldX = baseX + r * cellSize;
                 int worldZ = baseZ + c * cellSize;
-                addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, baseY, worldZ, IncrementalMazeGenerator.WALL);
+                addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, worldYFor(r, c), worldZ, IncrementalMazeGenerator.WALL);
                 collected++;
             }
             fillC++;
@@ -198,7 +208,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
             }
             int worldX = baseX + r * cellSize;
             int worldZ = baseZ + c * cellSize;
-            addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, baseY, worldZ, cell.type());
+            addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, worldYFor(r, c), worldZ, cell.type());
             collected++;
             if (collected >= batch) break;
         }
@@ -464,5 +474,12 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
 
     private double clampPct(double v) {
         return Math.max(0.0, Math.min(100.0, v));
+    }
+
+    private int worldYFor(int r, int c) {
+        if (cellHeights != null && r >= 0 && r < cellHeights.length && c >= 0 && c < cellHeights[0].length) {
+            return cellHeights[r][c];
+        }
+        return baseY;
     }
 }

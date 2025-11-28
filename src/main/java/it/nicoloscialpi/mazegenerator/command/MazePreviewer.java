@@ -37,10 +37,12 @@ public final class MazePreviewer {
         double baseY = origin.getY();
         Particle.DustOptions outlineDust = new Particle.DustOptions(Color.fromRGB(255, 64, 64), 1.2f);
         Particle.DustOptions topDust = new Particle.DustOptions(Color.fromRGB(64, 160, 255), 1.1f);
+        Particle.DustOptions diagDust = new Particle.DustOptions(Color.fromRGB(120, 255, 120), 0.9f);
 
         List<Location> perimeter = new ArrayList<>();
         List<Location> topOutline = new ArrayList<>();
         List<Location> heightLines = new ArrayList<>();
+        List<Location> diagonals = new ArrayList<>();
 
         int count = 0;
         for (int dx = 0; dx <= width && count < maxParticles; dx += step) {
@@ -58,6 +60,15 @@ public final class MazePreviewer {
             count += 2;
         }
 
+        // Diagonal cross lines across footprint for orientation
+        for (int d = 0; d <= Math.max(width, depth) && count < maxParticles; d += Math.max(2, step)) {
+            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + 0.2, origin.getZ() + Math.min(d, depth)));
+            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + wallHeight, origin.getZ() + Math.min(d, depth)));
+            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + 0.2, origin.getZ() + Math.max(0, depth - Math.min(d, depth))));
+            diagonals.add(new Location(world, origin.getX() + Math.min(d, width), baseY + wallHeight, origin.getZ() + Math.max(0, depth - Math.min(d, depth))));
+            count += 4;
+        }
+
         // Height columns on corners
         int stepY = Math.max(1, Math.min(2, wallHeight));
         int heightLimit = Math.max(1, wallHeight);
@@ -67,7 +78,7 @@ public final class MazePreviewer {
         for (int[] c : corners) {
             int dy = heightLimit;
             while (count < maxParticles) {
-                heightLines.add(new Location(world, origin.getX() + c[0], baseY + dy+1, origin.getZ() + c[1]));
+                heightLines.add(new Location(world, origin.getX() + c[0], baseY + dy, origin.getZ() + c[1]));
                 count++;
                 if (dy == 0) {
                     break; // reached ground
@@ -85,6 +96,7 @@ public final class MazePreviewer {
                 spawnAll(perimeter, outlineDust, player);
                 spawnAll(topOutline, topDust, player);
                 spawnAll(heightLines, outlineDust, player);
+                spawnAll(diagonals, diagDust, player);
             }
         }.runTaskTimer(plugin, 0L, 10L); // every 0.5s
 
