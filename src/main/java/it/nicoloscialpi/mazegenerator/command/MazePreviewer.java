@@ -59,7 +59,7 @@ public final class MazePreviewer {
         for (int[] c : corners) {
             int dy = heightLimit;
             while (count < maxParticles) {
-                heightLines.add(new Location(world, origin.getX() + c[0], baseY + dy, origin.getZ() + c[1]));
+                heightLines.add(new Location(world, origin.getX() + c[0], baseY + dy+1, origin.getZ() + c[1]));
                 count++;
                 if (dy == 0) {
                     break; // reached ground

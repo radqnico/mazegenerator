@@ -1,18 +1,18 @@
 # MazeGenerator — User Guide
 
-This guide explains how to install, configure, and use MazeGenerator on a Paper server. It covers themes, command arguments, performance tips, and example commands — including “extreme” builds to challenge your server.
+This guide explains how to install, configure, and use MazeGenerator on a Paper server. It covers themes, command arguments, performance tips, progress HUDs, and example commands — including “extreme” builds to challenge your server.
 
 ## What It Does
 
 MazeGenerator builds large, themed mazes in your world without freezing the server. It generates the layout and places blocks over time with a per‑tick time budget, chunk‑aware scheduling, and optional hollow walls to reduce block count.
 
 Key features:
-- Streaming generation and placement — no giant in‑memory queues.
+- Streaming generation and placement — no giant in‑memory queues; optional disk spillover to keep RAM usage bounded.
 - Per‑block material randomization using weighted themes (`themes.yml`).
-- Configurable time budget and batch size to protect TPS.
-- Optional hollow walls; optional closed roof.
-- Works across chunks and worlds; chunk loading can be budgeted or disabled.
-- Tab‑complete makes arguments easier; `stop` and `reload` subcommands.
+- Configurable time budget and batch size to protect TPS; chunk loading can be budgeted or disabled.
+- Optional hollow walls; optional closed roof; no hard limits on maze size/height (still must fit world Y range).
+- Two-phase HUD: generation and placement each have their own boss bar; action bar updates every second, chat once per minute.
+- Tab‑complete makes arguments easier; `stop`, `reload`, and configurable preview skip (`request-confirm`) for instant builds.
 
 Supported: Paper 1.21.x (`api-version: 1.21`).
 
@@ -83,9 +83,13 @@ Defaults aim to preserve TPS out of the box:
   - `min-millis-per-tick: 1`, `max-millis-per-tick: 8`
   - `spare-high: 18` (increase budget only with plenty of room)
   - `spare-low: 12` (back off faster when tick gets tight)
+- `cells-per-job` / `max-blocks-per-job` — adaptive batching; large cell/height mazes auto-scale batch size.
 - `defer-wall-fill: false` — fill walls first, then carve (instant visual walls, then corridors appear).
 - `chunk-loads-per-tick: 1` — at most this many new chunks are sync‑loaded per tick from the pending buffer.
 - `force-chunk-load: true` — if true, the builder may load up to `chunk-loads-per-tick` new chunks per tick from its buffer; if false, it only places in already‑loaded chunks (buffering the rest until chunks load naturally).
+- `placement-max-pending` — memory budget for pending cells; when exceeded and `disk-spill.enabled` is true, pending cells spill to disk.
+- `disk-spill.enabled` / `disk-spill.max-file-size` — optional temp-file spillover to keep RAM flat on huge mazes.
+- `request-confirm` — if false, skip the preview/confirm flow and build immediately.
 
 Important:
 - With `force-chunk-load: true`, the builder loads at most `chunk-loads-per-tick` new chunks per tick from its buffer to avoid spikes.
@@ -101,7 +105,7 @@ Recommended tuning:
 ## Command Reference
 
 Base command:
-- `/maze` — starts a build with sensible defaults near your position.
+- `/maze` — starts a build with sensible defaults near your position. If `request-confirm` is true, it shows a preview first and waits for `/maze confirm`; if false, it starts building immediately.
 - `/maze stop` — stops all active maze builds.
 - `/maze reload` — reloads config, messages, and themes (permission `mazegenerator.reload`).
 
@@ -126,6 +130,7 @@ Notes:
 - Per‑block randomization: Each block’s material is chosen using your theme weights; cells are not uniform.
 - Hollow walls build only edges on walls and top, but floors are always fully placed.
 - Closed + hollow makes a “shell” roof over walls and corridors; open (closed:false) leaves corridor tops as AIR.
+- No hard cap on maze size or cell/wall height; only world Y-range is enforced.
 
 ---
 
@@ -156,6 +161,11 @@ Reload configuration, messages, and themes:
 - `/maze reload` (permission `mazegenerator.reload`)
 
 ---
+
+## Progress HUD & Notifications
+
+- Chat: once per minute, includes the current phase (`generation` or `placement`), percentage, chunk budget, and time budget.
+- Boss bars: one per phase with color coding; action bar mirrors the active phase every second.
 
 ## Troubleshooting & Tips
 
