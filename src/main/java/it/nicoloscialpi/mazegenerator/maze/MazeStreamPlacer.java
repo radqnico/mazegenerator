@@ -80,12 +80,13 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         final int baseZ = location.getBlockZ();
         final org.bukkit.World world = location.getWorld();
         final java.util.function.BiConsumer<Long, int[]> addToGroup = (key, cell) -> {
+            long k = key; // avoid boxing surprises
             var list = groups.computeIfAbsent(key, k -> new java.util.ArrayList<>());
             list.add(cell);
             if (list.size() >= cellsPerJob) {
                 int[][] arr = list.toArray(new int[0][]);
-                int cx = (int) (key >> 32);
-                int cz = (int) (key);
+                int cx = (int) (k >> 32);
+                int cz = (int) k;
                 jobs.add(new it.nicoloscialpi.mazegenerator.loadbalancer.BatchPlaceCellsJob(world, cx, cz, theme, height, cellSize, closed, hollow, setBlockData, arr));
                 groups.remove(key);
             }
