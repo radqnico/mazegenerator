@@ -18,9 +18,9 @@ import java.util.*;
 
 public class MazeCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> ACCEPTABLE_ARGS = Arrays.asList(
-            "x","y","z","world",
-            "mazeSizeX","mazeSizeZ",
+    private static final List<String> ORDERED_ARGS = Arrays.asList(
+            "x","y","z","mazeSizeX","mazeSizeZ",
+            "world",
             "cellSize","wallHeight",
             "hasExits","additionalExits",
             "hasRoom","roomSizeX","roomSizeZ",
@@ -60,6 +60,8 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         p.getInt("z").ifPresent(v -> opt.z = v);
         p.getInt("mazeSizeX").ifPresent(v -> opt.mazeSizeX = v);
         p.getInt("mazeSizeZ").ifPresent(v -> opt.mazeSizeZ = v);
+        p.getInt("sizeX").ifPresent(v -> opt.mazeSizeX = v);
+        p.getInt("sizeZ").ifPresent(v -> opt.mazeSizeZ = v);
         p.getInt("cellSize").ifPresent(v -> opt.cellSize = v);
         p.getInt("wallHeight").ifPresent(v -> opt.wallHeight = v);
         p.getBool("hasExits").ifPresent(v -> opt.hasExits = v);
@@ -182,16 +184,22 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
-        List<String> suggestions = new ArrayList<>(ACCEPTABLE_ARGS);
+        LinkedHashSet<String> availableKeys = new LinkedHashSet<>(ORDERED_ARGS);
         String last = args.length > 0 ? args[args.length - 1] : "";
+        List<String> suggestions = new ArrayList<>();
 
         for (String a : args) {
-            String[] kv = a.split(":", 2);
-            if (kv.length > 0) suggestions.remove(kv[0]);
+            if (a == null) continue;
+            int idx = a.indexOf(":");
+            String key = idx >= 0 ? a.substring(0, idx) : a;
+            String canonical = canonicalKey(key);
+            availableKeys.removeIf(k -> k.equalsIgnoreCase(canonical));
         }
 
         if (last.contains(":")) {
             String key = last.substring(0, last.indexOf(":"));
+            String valueQuery = last.substring(last.indexOf(":") + 1).toLowerCase(Locale.ROOT);
+            String canonicalKey = canonicalKey(key);
             suggestions.clear();
             switch (key.toLowerCase()) {
                 case "x": case "y": case "z":
@@ -205,47 +213,77 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     }
                     break;
                 case "world":
-                    sender.getServer().getWorlds().forEach(w -> suggestions.add("world:" + w.getName()));
+                    sender.getServer().getWorlds().forEach(w -> suggestions.add(canonicalKey + ":" + w.getName()));
                     break;
                 case "themename":
-                    Themes.getThemes().keySet().forEach(t -> suggestions.add("themeName:" + t));
+                    if (Themes.getThemes() != null) {
+                        Themes.getThemes().keySet().forEach(t -> suggestions.add(canonicalKey + ":" + t));
+                    }
                     break;
                 case "hasexits":
                 case "hasroom":
                 case "closed":
                 case "hollow":
-                    suggestions.add(key + ":true");
-                    suggestions.add(key + ":false");
+                    suggestions.add(canonicalKey + ":true");
+                    suggestions.add(canonicalKey + ":false");
                     break;
                 case "cellsize":
-                    suggestions.add("cellSize:1");
-                    suggestions.add("cellSize:2");
+                    suggestions.add(canonicalKey + ":1");
+                    suggestions.add(canonicalKey + ":2");
                     break;
                 case "wallheight":
-                    suggestions.add("wallHeight:3");
-                    suggestions.add("wallHeight:4");
+                    suggestions.add(canonicalKey + ":3");
+                    suggestions.add(canonicalKey + ":4");
                     break;
                 default:
                     break;
             }
+            filterByQuery(suggestions, valueQuery);
             return suggestions;
         }
 
         // Build final list: key suggestions with ':' plus optional subcommands
         List<String> out = new ArrayList<>();
-        for (String k : suggestions) {
+        List<String> filteredKeys = filterKeysByQuery(new ArrayList<>(availableKeys), last);
+        for (String k : filteredKeys) {
             out.add(k + ":");
         }
         // Suggest subcommands only for the first token (no key:value yet)
         if (args.length == 0 || (args.length == 1 && !last.contains(":"))) {
             String lastLower = last.toLowerCase(Locale.ROOT);
             for (String sub : SUBCOMMANDS) {
-                if (last.isEmpty() || sub.startsWith(lastLower)) {
+                if (last.isEmpty() || sub.contains(lastLower)) {
                     out.add(sub);
                 }
             }
         }
         return out;
+    }
+
+    private String canonicalKey(String key) {
+        if ("sizex".equalsIgnoreCase(key)) return "mazeSizeX";
+        if ("sizez".equalsIgnoreCase(key)) return "mazeSizeZ";
+        for (String k : ORDERED_ARGS) {
+            if (k.equalsIgnoreCase(key)) return k;
+        }
+        return key;
+    }
+
+    private List<String> filterKeysByQuery(List<String> candidates, String query) {
+        String q = query.toLowerCase(Locale.ROOT);
+        List<String> filtered = new ArrayList<>();
+        for (String candidate : candidates) {
+            if (q.isEmpty() || candidate.toLowerCase(Locale.ROOT).contains(q)) {
+                filtered.add(candidate);
+            }
+        }
+        return filtered;
+    }
+
+    private void filterByQuery(List<String> suggestions, String query) {
+        if (query == null || query.isEmpty()) return;
+        String q = query.toLowerCase(Locale.ROOT);
+        suggestions.removeIf(s -> !s.toLowerCase(Locale.ROOT).contains(q));
     }
 
     private boolean handleStop(CommandSender sender) {
