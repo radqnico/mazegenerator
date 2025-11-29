@@ -19,7 +19,7 @@ import java.util.*;
 public class MazeCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> ORDERED_ARGS = Arrays.asList(
-            "x","y","z","mazeSizeX","mazeSizeZ",
+            "x","y","z","sizeX","sizeZ","mazeSizeX","mazeSizeZ",
             "world",
             "cellSize","wallHeight",
             "hasExits","additionalExits",
@@ -193,13 +193,13 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             int idx = a.indexOf(":");
             String key = idx >= 0 ? a.substring(0, idx) : a;
             String canonical = canonicalKey(key);
-            availableKeys.removeIf(k -> k.equalsIgnoreCase(canonical));
+            availableKeys.removeIf(k -> canonicalKey(k).equalsIgnoreCase(canonical));
         }
 
         if (last.contains(":")) {
             String key = last.substring(0, last.indexOf(":"));
             String valueQuery = last.substring(last.indexOf(":") + 1).toLowerCase(Locale.ROOT);
-            String canonicalKey = canonicalKey(key);
+            String displayKey = displayKey(key);
             suggestions.clear();
             switch (key.toLowerCase()) {
                 case "x": case "y": case "z":
@@ -209,31 +209,36 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                             suggestions.add("x:" + b.getX());
                             suggestions.add("y:" + b.getY());
                             suggestions.add("z:" + b.getZ());
+                        } else {
+                            Location loc = p.getLocation();
+                            suggestions.add("x:" + loc.getBlockX());
+                            suggestions.add("y:" + loc.getBlockY());
+                            suggestions.add("z:" + loc.getBlockZ());
                         }
                     }
                     break;
                 case "world":
-                    sender.getServer().getWorlds().forEach(w -> suggestions.add(canonicalKey + ":" + w.getName()));
+                    sender.getServer().getWorlds().forEach(w -> suggestions.add(displayKey + ":" + w.getName()));
                     break;
                 case "themename":
                     if (Themes.getThemes() != null) {
-                        Themes.getThemes().keySet().forEach(t -> suggestions.add(canonicalKey + ":" + t));
+                        Themes.getThemes().keySet().forEach(t -> suggestions.add(displayKey + ":" + t));
                     }
                     break;
                 case "hasexits":
                 case "hasroom":
                 case "closed":
                 case "hollow":
-                    suggestions.add(canonicalKey + ":true");
-                    suggestions.add(canonicalKey + ":false");
+                    suggestions.add(displayKey + ":true");
+                    suggestions.add(displayKey + ":false");
                     break;
                 case "cellsize":
-                    suggestions.add(canonicalKey + ":1");
-                    suggestions.add(canonicalKey + ":2");
+                    suggestions.add(displayKey + ":1");
+                    suggestions.add(displayKey + ":2");
                     break;
                 case "wallheight":
-                    suggestions.add(canonicalKey + ":3");
-                    suggestions.add(canonicalKey + ":4");
+                    suggestions.add(displayKey + ":3");
+                    suggestions.add(displayKey + ":4");
                     break;
                 default:
                     break;
@@ -267,6 +272,12 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             if (k.equalsIgnoreCase(key)) return k;
         }
         return key;
+    }
+
+    private String displayKey(String key) {
+        if ("sizex".equalsIgnoreCase(key)) return "sizeX";
+        if ("sizez".equalsIgnoreCase(key)) return "sizeZ";
+        return canonicalKey(key);
     }
 
     private List<String> filterKeysByQuery(List<String> candidates, String query) {
