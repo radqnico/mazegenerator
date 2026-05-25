@@ -23,7 +23,7 @@ public class LoadBalancer extends BukkitRunnable {
 
     private static TickEventListener eventListener = null;
 
-    public static long LAST_TICK_START_NANOS = 0;
+    public static volatile long LAST_TICK_START_NANOS = 0;
     private static final long TARGET_TICK_NANOS = 50_000_000L;
 
     private final ArrayDeque<LoadBalancerJob> jobs;

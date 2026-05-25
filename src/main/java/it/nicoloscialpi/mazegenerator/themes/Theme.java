@@ -55,13 +55,6 @@ public class Theme {
     private final Picker wallPicker = new Picker();
     private final Picker topPicker = new Picker();
 
-    public Material getRandomMaterial(HashMap<Material, Integer> materialIntegerHashMap, Picker picker, boolean dirtyFlag) {
-        if (dirtyFlag) {
-            buildPicker(materialIntegerHashMap, picker);
-        }
-        return pick(picker);
-    }
-
     public Material getRandomFloorMaterial() { if (floorDirty) { buildPicker(floorMaterialWeight, floorPicker); floorDirty = false; } return pick(floorPicker); }
     public Material getRandomWallMaterial() { if (wallDirty) { buildPicker(wallMaterialWeight, wallPicker); wallDirty = false; } return pick(wallPicker); }
     public Material getRandomTopMaterial() { if (topDirty) { buildPicker(topMaterialWeight, topPicker); topDirty = false; } return pick(topPicker); }
@@ -76,27 +69,6 @@ public class Theme {
             case "floor" -> addFloorMaterialWeight(material, weight);
             case "wall" -> addWallMaterialWeight(material, weight);
             case "top" -> addTopMaterialWeight(material, weight);
-        }
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("  Floor Materials:\n");
-        appendMaterialWeightsToString(floorMaterialWeight, stringBuilder);
-
-        stringBuilder.append("\n  Wall Materials:\n");
-        appendMaterialWeightsToString(wallMaterialWeight, stringBuilder);
-
-        stringBuilder.append("\n  Top Materials:\n");
-        appendMaterialWeightsToString(topMaterialWeight, stringBuilder);
-
-        return stringBuilder.toString();
-    }
-
-    private void appendMaterialWeightsToString(HashMap<Material, Integer> materialWeightMap, StringBuilder stringBuilder) {
-        for (Map.Entry<Material, Integer> entry : materialWeightMap.entrySet()) {
-            stringBuilder.append("    ").append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
         }
     }
 }

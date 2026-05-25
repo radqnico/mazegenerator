@@ -9,7 +9,7 @@ import org.bukkit.block.Block;
 import org.bukkit.persistence.PersistentDataType;
 import com.jeff_media.customblockdata.CustomBlockData;
 
-import static it.nicoloscialpi.mazegenerator.maze.MazeGenerator.WALL;
+import static it.nicoloscialpi.mazegenerator.maze.MazeCellType.WALL;
 
 /**
  * Places multiple cells within the same chunk in a single job to reduce scheduling overhead.

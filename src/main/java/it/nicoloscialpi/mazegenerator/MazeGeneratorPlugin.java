@@ -1,12 +1,11 @@
 package it.nicoloscialpi.mazegenerator;
 
 import it.nicoloscialpi.mazegenerator.command.MazeCommand;
+import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer;
 import it.nicoloscialpi.mazegenerator.themes.ThemeConfigurationReader;
 
 import it.nicoloscialpi.mazegenerator.themes.Themes;
 import org.bukkit.plugin.java.JavaPlugin;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 public final class MazeGeneratorPlugin extends JavaPlugin {
@@ -34,10 +33,6 @@ public final class MazeGeneratorPlugin extends JavaPlugin {
     public void onDisable() {
         // Cancel tasks and unregister listeners
         getServer().getScheduler().cancelTasks(this);
-        it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.shutdown();
-    }
-
-    @Override
-    public void onLoad() {
+        LoadBalancer.shutdown();
     }
 }

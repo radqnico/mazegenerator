@@ -4,6 +4,7 @@ import it.nicoloscialpi.mazegenerator.MessageFileReader;
 import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer;
 import it.nicoloscialpi.mazegenerator.maze.MazeStreamPlacer;
 import it.nicoloscialpi.mazegenerator.themes.Theme;
+import it.nicoloscialpi.mazegenerator.themes.ThemeConfigurationReader;
 import it.nicoloscialpi.mazegenerator.themes.Themes;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -298,7 +299,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleStop(CommandSender sender) {
-        it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.stopAll();
+        LoadBalancer.stopAll();
         sender.sendMessage(MessageFileReader.getMessage("job-stopped"));
         return true;
     }
@@ -333,7 +334,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleStatus(CommandSender sender) {
-        it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer lb = it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer.getFor(sender);
+        LoadBalancer lb = LoadBalancer.getFor(sender);
         if (lb == null) {
             sender.sendMessage("No active maze for you right now.");
         } else {
@@ -353,7 +354,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         plugin.reloadConfig();
-        Themes.parseThemesFromReader(new it.nicoloscialpi.mazegenerator.themes.ThemeConfigurationReader(plugin, "themes.yml"));
+        Themes.parseThemesFromReader(new ThemeConfigurationReader(plugin, "themes.yml"));
         MessageFileReader.read(plugin, "messages.yml");
         sender.sendMessage(MessageFileReader.getMessage("config-reloaded"));
         return true;

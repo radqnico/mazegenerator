@@ -14,8 +14,8 @@ public class CommandArgumentsParser {
             if (argument == null) continue;
             String[] split = argument.split(":", 2);
             if (split.length != 2) continue;
-            String key = split[0] != null ? split[0].trim().toLowerCase() : "";
-            String value = split[1] != null ? split[1].trim() : "";
+            String key = split[0].trim().toLowerCase();
+            String value = split[1].trim();
             if (!key.isEmpty()) {
                 argumentValue.put(key, value);
             }
@@ -68,18 +68,5 @@ public class CommandArgumentsParser {
         } catch (Exception exception) {
             return Optional.empty();
         }
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder("CommandArgumentsParser{");
-        if (argumentValue.isEmpty()) {
-            sb.append("No arguments}");
-        } else {
-            argumentValue.forEach((key, value) -> sb.append(key).append(": ").append(value).append(", "));
-            sb.delete(sb.length() - 2, sb.length()); // Removes the last comma and space
-            sb.append("}");
-        }
-        return sb.toString();
     }
 }

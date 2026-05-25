@@ -46,10 +46,6 @@ public final class ChunkLoadLimiter {
         return true;
     }
 
-    public static int getRemainingLoads() {
-        return remainingLoads;
-    }
-
     public static int getBudgetPerTick() {
         return budgetPerTick;
     }

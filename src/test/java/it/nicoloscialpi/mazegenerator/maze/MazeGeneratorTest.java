@@ -1,9 +1,8 @@
 package it.nicoloscialpi.mazegenerator.maze;
 
-import it.nicoloscialpi.mazegenerator.MazeGeneratorPlugin;
 import org.junit.jupiter.api.Test;
 
-import static it.nicoloscialpi.mazegenerator.maze.MazeGenerator.*;
+import static it.nicoloscialpi.mazegenerator.maze.MazeGenerator.printMaze;
 
 class MazeGeneratorTest {
 

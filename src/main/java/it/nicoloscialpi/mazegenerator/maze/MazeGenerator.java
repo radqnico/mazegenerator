@@ -1,13 +1,15 @@
 package it.nicoloscialpi.mazegenerator.maze;
 
+import it.nicoloscialpi.mazegenerator.util.SizeParser;
+
 import java.util.*;
 
 public class MazeGenerator {
-    public static final byte PATH = 1;
-    public static final byte WALL = 0;
-    public static final byte EXIT = 2;
-    public static final byte HOLE = 3;
-    public static final byte ROOM = 4;
+    public static final byte PATH = MazeCellType.PATH;
+    public static final byte WALL = MazeCellType.WALL;
+    public static final byte EXIT = MazeCellType.EXIT;
+    public static final byte HOLE = MazeCellType.HOLE;
+    public static final byte ROOM = MazeCellType.ROOM;
 
     private static long lastGenerationMillis = 0;
 
@@ -20,9 +22,8 @@ public class MazeGenerator {
     private final Random random = new Random();
 
     public MazeGenerator(int sizeN, int sizeM) {
-        // Ensure dimensions are odd
-        this.sizeN = (sizeN % 2 == 0) ? sizeN + 1 : sizeN;
-        this.sizeM = (sizeM % 2 == 0) ? sizeM + 1 : sizeM;
+        this.sizeN = SizeParser.ensureOdd(sizeN);
+        this.sizeM = SizeParser.ensureOdd(sizeM);
     }
 
     public byte[][] generateMaze(int additionalExits, double holeProbability, boolean hasRoom, int roomHeight, int roomWidth, boolean hasExits) {

@@ -1,18 +1,12 @@
 package it.nicoloscialpi.mazegenerator.maze;
 
+import it.nicoloscialpi.mazegenerator.util.SizeParser;
+
 import java.util.*;
 
-/**
- * Incremental maze generator that streams carved cells on demand.
- * Uses an iterative backtracking algorithm over a cell grid where paths reside on odd indices.
- */
-public class IncrementalMazeGenerator {
+import static it.nicoloscialpi.mazegenerator.maze.MazeCellType.*;
 
-    public static final byte PATH = MazeGenerator.PATH;
-    public static final byte WALL = MazeGenerator.WALL;
-    public static final byte EXIT = MazeGenerator.EXIT;
-    public static final byte HOLE = MazeGenerator.HOLE;
-    public static final byte ROOM = MazeGenerator.ROOM;
+public class IncrementalMazeGenerator {
 
     private final int sizeN;
     private final int sizeM;
@@ -53,8 +47,8 @@ public class IncrementalMazeGenerator {
                                     int roomHeight,
                                     int roomWidth,
                                     boolean hasExits) {
-        this.sizeN = (sizeN % 2 == 0) ? sizeN + 1 : sizeN;
-        this.sizeM = (sizeM % 2 == 0) ? sizeM + 1 : sizeM;
+        this.sizeN = SizeParser.ensureOdd(sizeN);
+        this.sizeM = SizeParser.ensureOdd(sizeM);
         this.holeProbability = Math.max(0.0, Math.min(1.0, holeProbability));
         this.hasRoom = hasRoom;
         this.roomHeight = Math.max(1, roomHeight);
@@ -79,7 +73,6 @@ public class IncrementalMazeGenerator {
         }
     }
 
-    public long getTotalCells() { return totalCells; }
     public long getEmittedCount() { return emittedCount; }
 
     public boolean isComplete() {
@@ -140,7 +133,7 @@ public class IncrementalMazeGenerator {
             for (int[] d : directions) {
                 int nr = r + d[0];
                 int nc = c + d[1];
-                if (isWithinInner(nr, nc) && !isVisited(nr, nc)) {
+                if (isWithin(nr, nc) && !isVisited(nr, nc)) {
                     // Turn a wall cell adjacent into a hole (treated as PATH for placement)
                     pushPath(nr, nc, HOLE);
                     break;
@@ -185,10 +178,6 @@ public class IncrementalMazeGenerator {
     }
 
     private boolean isWithin(int r, int c) {
-        return r > 0 && r < sizeN - 1 && c > 0 && c < sizeM - 1;
-    }
-
-    private boolean isWithinInner(int r, int c) { // strictly inside borders
         return r > 0 && r < sizeN - 1 && c > 0 && c < sizeM - 1;
     }
 

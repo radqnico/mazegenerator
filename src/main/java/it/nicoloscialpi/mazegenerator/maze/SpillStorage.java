@@ -75,7 +75,8 @@ public class SpillStorage {
                 CellGroupBuffer buffer = fromDisk.computeIfAbsent(key, k -> new CellGroupBuffer());
                 buffer.add(worldX, worldY, worldZ, type);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            System.getLogger("MazeGenerator").log(System.Logger.Level.WARNING, "Failed to read spill file: " + filePath, e);
         } finally {
             try {
                 Files.deleteIfExists(filePath);

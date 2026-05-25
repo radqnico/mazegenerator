@@ -1,7 +1,6 @@
 package it.nicoloscialpi.mazegenerator.command;
 
 import it.nicoloscialpi.mazegenerator.maze.TerrainHeightMap;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
@@ -41,10 +40,6 @@ public final class MazePreviewer {
             var sample = TerrainHeightMap.compute(world, origin.getBlockX(), origin.getBlockZ(), origin.getBlockY(), cellSize, mazeSizeX, mazeSizeZ, wallHeight);
             heights = sample.valid() ? sample.heights() : null;
         }
-        Particle.DustOptions outlineDust = new Particle.DustOptions(Color.fromRGB(255, 64, 64), 1.2f);
-        Particle.DustOptions topDust = new Particle.DustOptions(Color.fromRGB(64, 160, 255), 1.1f);
-        Particle.DustOptions diagDust = new Particle.DustOptions(Color.fromRGB(120, 255, 120), 0.9f);
-
         List<Location> perimeter = new ArrayList<>();
         List<Location> topOutline = new ArrayList<>();
         List<Location> heightLines = new ArrayList<>();
@@ -111,10 +106,10 @@ public final class MazePreviewer {
         BukkitTask task = new BukkitRunnable() {
             @Override
             public void run() {
-                spawnAll(perimeter, outlineDust, player);
-                spawnAll(topOutline, topDust, player);
-                spawnAll(heightLines, outlineDust, player);
-                spawnAll(diagonals, diagDust, player);
+                spawnAll(perimeter, player);
+                spawnAll(topOutline, player);
+                spawnAll(heightLines, player);
+                spawnAll(diagonals, player);
             }
         }.runTaskTimer(plugin, 0L, 10L); // every 0.5s
 
@@ -129,7 +124,7 @@ public final class MazePreviewer {
         }
     }
 
-    private static void spawnAll(List<Location> points, Particle.DustOptions dust, Player viewer) {
+    private static void spawnAll(List<Location> points, Player viewer) {
         if (viewer == null) return;
         Location viewerLoc = viewer.getLocation();
         for (Location loc : points) {

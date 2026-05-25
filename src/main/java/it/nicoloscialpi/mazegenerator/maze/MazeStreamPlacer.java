@@ -1,24 +1,26 @@
 package it.nicoloscialpi.mazegenerator.maze;
 
 import it.nicoloscialpi.mazegenerator.MazeGeneratorPlugin;
+import it.nicoloscialpi.mazegenerator.loadbalancer.BatchPlaceCellsJob;
+import it.nicoloscialpi.mazegenerator.loadbalancer.JobProducer;
 import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancerJob;
 import it.nicoloscialpi.mazegenerator.loadbalancer.PhaseProgressSnapshot;
 import it.nicoloscialpi.mazegenerator.themes.Theme;
 import it.nicoloscialpi.mazegenerator.util.SizeParser;
-import it.nicoloscialpi.mazegenerator.maze.CellGroupBuffer;
-import it.nicoloscialpi.mazegenerator.maze.SpillStorage;
-import it.nicoloscialpi.mazegenerator.maze.TerrainHeightMap;
 import org.bukkit.Location;
 import org.bukkit.World;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbalancer.JobProducer {
+import static it.nicoloscialpi.mazegenerator.maze.MazeCellType.WALL;
+
+public class MazeStreamPlacer implements JobProducer {
 
     private final Theme theme;
     private final Location location;
@@ -79,8 +81,8 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         this.cellSize = cellSize;
         this.closed = closed;
         this.hollow = isHollow;
-        this.sizeN = (sizeN % 2 == 0) ? sizeN + 1 : sizeN;
-        this.sizeM = (sizeM % 2 == 0) ? sizeM + 1 : sizeM;
+        this.sizeN = SizeParser.ensureOdd(sizeN);
+        this.sizeM = SizeParser.ensureOdd(sizeM);
         this.additionalExits = additionalExits;
         this.erosion = erosion;
         this.hasRoom = hasRoom;
@@ -154,7 +156,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                     int c = fillC;
                     int worldX = baseX + r * cellSize;
                     int worldZ = baseZ + c * cellSize;
-                    addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, worldYFor(r, c), worldZ, IncrementalMazeGenerator.WALL);
+                    addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, worldYFor(r, c), worldZ, WALL);
                     filledWalls++;
                     collected++;
                 }
@@ -176,7 +178,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
                 int c = fillC;
                 int worldX = baseX + r * cellSize;
                 int worldZ = baseZ + c * cellSize;
-                addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, worldYFor(r, c), worldZ, IncrementalMazeGenerator.WALL);
+                addCellToGroup(groups, jobs, effectiveCellsPerJob, setBlockData, worldX, worldYFor(r, c), worldZ, WALL);
                 collected++;
             }
             fillC++;
@@ -195,7 +197,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
             int r = cell.r();
             int c = cell.c();
             int idx = r * sizeM + c;
-            if (cell.type() != IncrementalMazeGenerator.WALL) {
+            if (cell.type() != WALL) {
                 carved.set(idx);
             }
             int worldX = baseX + r * cellSize;
@@ -253,7 +255,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
         buffer.clear();
         int cx = (int) (chunkKey >> 32);
         int cz = (int) chunkKey;
-        jobs.add(new it.nicoloscialpi.mazegenerator.loadbalancer.BatchPlaceCellsJob(
+        jobs.add(new BatchPlaceCellsJob(
                 world, cx, cz, theme, height, cellSize, closed, hollow, setBlockData, arr
         ));
     }
@@ -330,7 +332,7 @@ public class MazeStreamPlacer implements it.nicoloscialpi.mazegenerator.loadbala
             placementPct = clampPct((double) phase1DoneApprox / (double) totalCells * 100.0);
         }
 
-        Map<BuildPhase, Double> map = new java.util.EnumMap<>(BuildPhase.class);
+        Map<BuildPhase, Double> map = new EnumMap<>(BuildPhase.class);
         map.put(BuildPhase.GENERATION, generationPct);
         map.put(BuildPhase.PLACEMENT, placementPct);
 
