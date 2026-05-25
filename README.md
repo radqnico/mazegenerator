@@ -4,7 +4,7 @@
 
 ## Collaborate 🤝
 
-Contributions are welcome. To collaborate, create a pull request to the `develop` branch. Your changes will be tested automatically; if all tests pass, an admin will review and merge to `master`, then tag and release a new version. As the project grows, heavy workflows will be automated to maintain efficiency.
+Contributions are welcome. To collaborate, create a pull request to the `develop` branch. Testing will be performed on the `develop` branch; if all tests pass, an admin will merge to `master` and tag/release a new version. As the project scope grows, heavy workflows will be automated to maintain efficiency.
 
 Build **massive, themed mazes** in Minecraft without freezing the server. The plugin generates the maze layout **incrementally** and places blocks **over time** with a configurable **per-tick budget**. Work is grouped per chunk, and chunks are only loaded on demand at the exact moment blocks need to be placed.
 
