@@ -397,11 +397,10 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         Dialog dialog = Dialog.create(builder -> builder.empty()
                 .base(DialogBase.builder(Component.text("Maze Configuration", NamedTextColor.GOLD))
                         .inputs(List.of(
-                                DialogInput.numberRange("mazeSizeX", Component.text("Maze Width (cells)", NamedTextColor.GREEN), 1f, 100f)
+                                DialogInput.numberRange("mazeSizeX", Component.text("Maze Width (cells)", NamedTextColor.GREEN), 1f, 500f)
                                         .step(1f).initial(5f).width(300).build(),
-                                DialogInput.numberRange("mazeSizeZ", Component.text("Maze Depth (cells)", NamedTextColor.GREEN), 1f, 100f)
+                                DialogInput.numberRange("mazeSizeZ", Component.text("Maze Depth (cells)", NamedTextColor.GREEN), 1f, 500f)
                                         .step(1f).initial(5f).width(300).build(),
-                                DialogInput.bool("goUnsafe", Component.text("Go Unsafe (unlock 1000x1000, 100% erosion)", NamedTextColor.RED)).build(),
                                 DialogInput.numberRange("cellSize", Component.text("Cell Size", NamedTextColor.GREEN), 1f, 10f)
                                         .step(1f).initial(1f).width(300).build(),
                                 DialogInput.numberRange("wallHeight", Component.text("Wall Height", NamedTextColor.GREEN), 1f, 20f)
@@ -439,9 +438,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         return (view, audience) -> {
             if (!(audience instanceof Player player)) return;
 
-            Boolean goUnsafe = view.getBoolean("goUnsafe");
-            boolean unsafe = goUnsafe != null && goUnsafe;
-
             int mazeSizeX = view.getFloat("mazeSizeX").intValue();
             int mazeSizeZ = view.getFloat("mazeSizeZ").intValue();
             int cellSize = view.getFloat("cellSize").intValue();
@@ -453,13 +449,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             Boolean hollow = view.getBoolean("hollow");
             String themeName = view.getText("themeName");
             if (themeName == null) themeName = "desert";
-
-            if (!unsafe) {
-                if (mazeSizeX > 100 || mazeSizeZ > 100 || erosionRaw > 20) {
-                    player.sendMessage(Component.text("Values exceed safe limits! Enable \"Go Unsafe\" to exceed 100x100 maze and 20% erosion.", NamedTextColor.RED));
-                    return;
-                }
-            }
 
             MazeOptions opt = new MazeOptions();
             opt.mazeSizeX = mazeSizeX;
