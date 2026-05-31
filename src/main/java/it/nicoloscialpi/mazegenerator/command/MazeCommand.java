@@ -394,7 +394,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             themeEntries.add(SingleOptionDialogInput.OptionEntry.create("desert", Component.text("desert"), true));
         }
 
-        Dialog dialog = Dialog.create(builder -> builder
+        Dialog dialog = Dialog.create(builder -> builder.empty()
                 .base(DialogBase.builder(Component.text("Maze Configuration", NamedTextColor.GOLD))
                         .inputs(List.of(
                                 DialogInput.numberRange("mazeSizeX", Component.text("Maze Width (cells)", NamedTextColor.GREEN), 1f, 100f)
