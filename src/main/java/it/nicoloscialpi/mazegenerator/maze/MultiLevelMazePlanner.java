@@ -52,6 +52,8 @@ public class MultiLevelMazePlanner {
             }
         }
 
+        ensureHolesBetweenLayers(grids);
+
         List<List<StairPosition>> stairPositions = new ArrayList<>(layers - 1);
         for (int i = 0; i < layers - 1; i++) {
             stairPositions.add(findStairPositions(grids.get(i), grids.get(i + 1)));
@@ -255,6 +257,73 @@ public class MultiLevelMazePlanner {
                 return;
             }
         }
+    }
+
+    private void ensureHolesBetweenLayers(List<byte[][]> grids) {
+        if (layers < 2) return;
+
+        for (int layerIdx = 0; layerIdx < layers - 1; layerIdx++) {
+            byte[][] lower = grids.get(layerIdx);
+            byte[][] upper = grids.get(layerIdx + 1);
+
+            int holeCount = 0;
+            for (int r = 0; r < sizeN; r++) {
+                for (int c = 0; c < sizeM; c++) {
+                    if (lower[r][c] == MazeCellType.HOLE && upper[r][c] == MazeCellType.HOLE) {
+                        holeCount++;
+                    }
+                }
+            }
+
+            if (holeCount == 0) {
+                forceHoleBetweenLayers(lower, upper);
+            }
+        }
+    }
+
+    private void forceHoleBetweenLayers(byte[][] gridA, byte[][] gridB) {
+        List<IntPair> wallCandidates = new ArrayList<>();
+
+        for (int r = 1; r < sizeN - 1; r++) {
+            for (int c = 1; c < sizeM - 1; c++) {
+                boolean isWallA = gridA[r][c] == MazeCellType.WALL;
+                boolean isWallB = gridB[r][c] == MazeCellType.WALL;
+
+                if (!isWallA && !isWallB) continue;
+
+                if (hasAdjacentCorridor(gridA, r, c) || hasAdjacentCorridor(gridB, r, c)) {
+                    wallCandidates.add(new IntPair(r, c));
+                }
+            }
+        }
+
+        Collections.shuffle(wallCandidates, random);
+
+        for (IntPair p : wallCandidates) {
+            if (gridA[p.r][p.c] == MazeCellType.WALL) {
+                gridA[p.r][p.c] = MazeCellType.HOLE;
+            }
+            if (gridB[p.r][p.c] == MazeCellType.WALL) {
+                gridB[p.r][p.c] = MazeCellType.HOLE;
+            }
+            if (gridA[p.r][p.c] == MazeCellType.HOLE || gridB[p.r][p.c] == MazeCellType.HOLE) {
+                return;
+            }
+        }
+    }
+
+    private boolean hasAdjacentCorridor(byte[][] grid, int r, int c) {
+        int[][] dirs = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        for (int[] d : dirs) {
+            int nr = r + d[0];
+            int nc = c + d[1];
+            if (nr >= 0 && nr < sizeN && nc >= 0 && nc < sizeM) {
+                if (isWalkable(grid[nr][nc])) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean isValidCell(byte[][] maze, int x, int y) {
