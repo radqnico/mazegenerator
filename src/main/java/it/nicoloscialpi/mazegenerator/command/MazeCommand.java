@@ -408,11 +408,11 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                                 DialogInput.numberRange("erosion", Component.text("Erosion (0-100%)", NamedTextColor.GREEN), 0f, 100f)
                                         .step(5f).initial(0f).width(300)
                                         .labelFormat("%s%% holes in walls").build(),
-                                DialogInput.bool("hasExits", Component.text("Generate Exits?", NamedTextColor.GREEN)),
-                                DialogInput.bool("hasRoom", Component.text("Generate Room?", NamedTextColor.GREEN)),
-                                DialogInput.bool("closed", Component.text("Closed Maze?", NamedTextColor.GREEN)),
-                                DialogInput.bool("hollow", Component.text("Hollow Maze?", NamedTextColor.GREEN)),
-                                DialogInput.singleOption("themeName", Component.text("Theme", NamedTextColor.GREEN), themeEntries)
+                                DialogInput.bool("hasExits", Component.text("Generate Exits?", NamedTextColor.GREEN)).build(),
+                                DialogInput.bool("hasRoom", Component.text("Generate Room?", NamedTextColor.GREEN)).build(),
+                                DialogInput.bool("closed", Component.text("Closed Maze?", NamedTextColor.GREEN)).build(),
+                                DialogInput.bool("hollow", Component.text("Hollow Maze?", NamedTextColor.GREEN)).build(),
+                                DialogInput.singleOption("themeName", Component.text("Theme", NamedTextColor.GREEN), themeEntries).build()
                         ))
                         .build())
                 .type(DialogType.confirmation(
