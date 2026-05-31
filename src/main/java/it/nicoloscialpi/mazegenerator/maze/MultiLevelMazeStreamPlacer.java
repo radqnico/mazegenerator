@@ -158,7 +158,7 @@ public class MultiLevelMazeStreamPlacer implements JobProducer {
                     if (stairList != null) {
                         for (MultiLevelMazePlanner.StairPosition sp : stairList) {
                             if (sp.r() == r && sp.c() == c) {
-                                emitType = STAIR_DOWN;
+                                emitType = STAIR_UP;
                                 break;
                             }
                         }
@@ -169,7 +169,7 @@ public class MultiLevelMazeStreamPlacer implements JobProducer {
                         if (prevStairs != null) {
                             for (MultiLevelMazePlanner.StairPosition sp : prevStairs) {
                                 if (sp.r() == r && sp.c() == c) {
-                                    emitType = STAIR_UP;
+                                    emitType = STAIR_DOWN;
                                     break;
                                 }
                             }

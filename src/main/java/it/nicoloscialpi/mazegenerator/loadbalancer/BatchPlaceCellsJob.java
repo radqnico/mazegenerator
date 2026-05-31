@@ -96,7 +96,8 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
     private void placeStairDown(int worldX, int worldY, int worldZ) {
         for (int x = 0; x < cellSize; x++) {
             for (int z = 0; z < cellSize; z++) {
-                setBlock(worldX + x, worldY + 0, worldZ + z, Material.AIR);
+                Material floorMat = theme.getRandomFloorMaterial();
+                setBlock(worldX + x, worldY + 0, worldZ + z, floorMat);
             }
         }
 
@@ -105,13 +106,6 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
                 for (int z = 0; z < cellSize; z++) {
                     setBlock(worldX + x, worldY + y, worldZ + z, Material.AIR);
                 }
-            }
-        }
-
-        int yTop = height;
-        for (int x = 0; x < cellSize; x++) {
-            for (int z = 0; z < cellSize; z++) {
-                setBlock(worldX + x, worldY + yTop, worldZ + z, Material.AIR);
             }
         }
     }
