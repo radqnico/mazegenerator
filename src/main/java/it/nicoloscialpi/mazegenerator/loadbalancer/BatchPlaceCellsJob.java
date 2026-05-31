@@ -91,12 +91,6 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
                 setBlock(worldX + x, worldY + yTop, worldZ + z, Material.AIR);
             }
         }
-
-        int ladderCenterX = worldX + cellSize / 2;
-        int ladderCenterZ = worldZ + cellSize / 2;
-        Material ladderMat = theme.getRandomLadderMaterial();
-        setBlock(ladderCenterX, worldY + 1, ladderCenterZ, ladderMat);
-        setBlock(ladderCenterX, worldY + 2, ladderCenterZ, ladderMat);
     }
 
     private void placeStairDown(int worldX, int worldY, int worldZ) {
@@ -115,41 +109,11 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
         }
 
         int yTop = height;
-        if (closed) {
-            if (hollow) {
-                for (int x = 0; x < cellSize; x++) {
-                    Material m1 = theme.getRandomTopMaterial();
-                    setBlock(worldX + x, worldY + yTop, worldZ + 0, m1);
-                    Material m2 = theme.getRandomTopMaterial();
-                    setBlock(worldX + x, worldY + yTop, worldZ + (cellSize - 1), m2);
-                }
-                for (int z = 1; z < cellSize - 1; z++) {
-                    Material m3 = theme.getRandomTopMaterial();
-                    setBlock(worldX + 0, worldY + yTop, worldZ + z, m3);
-                    Material m4 = theme.getRandomTopMaterial();
-                    setBlock(worldX + (cellSize - 1), worldY + yTop, worldZ + z, m4);
-                }
-            } else {
-                for (int x = 0; x < cellSize; x++) {
-                    for (int z = 0; z < cellSize; z++) {
-                        Material material = theme.getRandomTopMaterial();
-                        setBlock(worldX + x, worldY + yTop, worldZ + z, material);
-                    }
-                }
-            }
-        } else {
-            for (int x = 0; x < cellSize; x++) {
-                for (int z = 0; z < cellSize; z++) {
-                    setBlock(worldX + x, worldY + yTop, worldZ + z, Material.AIR);
-                }
+        for (int x = 0; x < cellSize; x++) {
+            for (int z = 0; z < cellSize; z++) {
+                setBlock(worldX + x, worldY + yTop, worldZ + z, Material.AIR);
             }
         }
-
-        int ladderCenterX = worldX + cellSize / 2;
-        int ladderCenterZ = worldZ + cellSize / 2;
-        Material ladderMat = theme.getRandomLadderMaterial();
-        setBlock(ladderCenterX, worldY + 1, ladderCenterZ, ladderMat);
-        setBlock(ladderCenterX, worldY + 2, ladderCenterZ, ladderMat);
     }
 
     private void placeNormalCell(int worldX, int worldY, int worldZ, byte type) {
