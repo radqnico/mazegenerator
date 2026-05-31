@@ -1,16 +1,9 @@
 package it.nicoloscialpi.mazegenerator.command;
 
-import io.papermc.paper.dialog.Dialog;
-import io.papermc.paper.registry.data.dialog.ActionButton;
-import io.papermc.paper.registry.data.dialog.DialogBase;
-import io.papermc.paper.registry.data.dialog.action.DialogAction;
-import io.papermc.paper.registry.data.dialog.action.DialogActionCallback;
-import io.papermc.paper.registry.data.dialog.input.DialogInput;
-import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput;
-import io.papermc.paper.registry.data.dialog.type.DialogType;
-import net.kyori.adventure.text.event.ClickCallback;
 import it.nicoloscialpi.mazegenerator.MazeGeneratorPlugin;
 import it.nicoloscialpi.mazegenerator.MessageFileReader;
+import it.nicoloscialpi.mazegenerator.dialog.DialogHandler;
+import it.nicoloscialpi.mazegenerator.dialog.DialogHandlerProvider;
 import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer;
 import it.nicoloscialpi.mazegenerator.maze.MultiLevelMazePlanner;
 import it.nicoloscialpi.mazegenerator.maze.MultiLevelMazeStreamPlacer;
@@ -20,7 +13,6 @@ import it.nicoloscialpi.mazegenerator.themes.ThemeConfigurationReader;
 import it.nicoloscialpi.mazegenerator.themes.Themes;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -423,152 +415,35 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        List<SingleOptionDialogInput.OptionEntry> themeEntries = new ArrayList<>();
-        if (Themes.getThemes() != null) {
-            Themes.getThemes().keySet().forEach(name ->
-                themeEntries.add(SingleOptionDialogInput.OptionEntry.create(name, Component.text(name), false)));
-        }
-        if (themeEntries.isEmpty()) {
-            themeEntries.add(SingleOptionDialogInput.OptionEntry.create("desert", Component.text("desert"), true));
-        }
+        it.nicoloscialpi.mazegenerator.dialog.MazeOptions defaultOpts = it.nicoloscialpi.mazegenerator.dialog.MazeOptions.defaults();
+        DialogHandler handler = DialogHandlerProvider.getHandler();
 
-        Dialog dialog = Dialog.create(builder -> builder.empty()
-                .base(DialogBase.builder(Component.text("Maze Configuration", NamedTextColor.GOLD))
-                        .inputs(List.of(
-                                DialogInput.numberRange("mazeSizeX", Component.text("Maze Width (cells)", NamedTextColor.GREEN), 1f, 500f)
-                                        .step(1f).initial(5f).width(300).build(),
-                                DialogInput.numberRange("mazeSizeZ", Component.text("Maze Depth (cells)", NamedTextColor.GREEN), 1f, 500f)
-                                        .step(1f).initial(5f).width(300).build(),
-                                DialogInput.numberRange("cellSize", Component.text("Cell Size", NamedTextColor.GREEN), 1f, 10f)
-                                        .step(1f).initial(1f).width(300).build(),
-                                DialogInput.numberRange("wallHeight", Component.text("Wall Height", NamedTextColor.GREEN), 1f, 20f)
-                                        .step(1f).initial(3f).width(300).build(),
-                                DialogInput.numberRange("layers", Component.text("Layers (multi-level)", NamedTextColor.GREEN), 1f, 10f)
-                                        .step(1f).initial(1f).width(300).build(),
-                                DialogInput.numberRange("stairs", Component.text("Stairs per layer pair", NamedTextColor.GREEN), 1f, 5f)
-                                        .step(1f).initial(1f).width(300).build(),
-                                DialogInput.numberRange("additionalExits", Component.text("Additional Exits", NamedTextColor.GREEN), 0f, 10f)
-                                        .step(1f).initial(0f).width(300).build(),
-                                DialogInput.numberRange("erosion", Component.text("Erosion %", NamedTextColor.GREEN), 0f, 20f)
-                                        .step(1f).initial(0f).width(300).build(),
-                                DialogInput.bool("hasExits", Component.text("Generate Exits?", NamedTextColor.GREEN)).build(),
-                                DialogInput.bool("hasRoom", Component.text("Generate Room?", NamedTextColor.GREEN)).build(),
-                                DialogInput.bool("closed", Component.text("Closed Maze?", NamedTextColor.GREEN)).build(),
-                                DialogInput.bool("hollow", Component.text("Hollow Maze?", NamedTextColor.GREEN)).build(),
-                                DialogInput.bool("layDown", Component.text("Lay Down on Terrain?", NamedTextColor.GREEN)).build(),
-                                DialogInput.singleOption("themeName", Component.text("Theme", NamedTextColor.GREEN), themeEntries).build()
-                        ))
-                        .build())
-                .type(DialogType.confirmation(
-                        ActionButton.create(
-                                Component.text("Generate Maze", TextColor.color(0xAEFFC1)),
-                                Component.text("Click to generate the maze"),
-                                100,
-                                DialogAction.customClick(createMazeDialogCallback(), ClickCallback.Options.builder().uses(1).build())
-                        ),
-                        ActionButton.create(
-                                Component.text("Cancel", TextColor.color(0xFFA0B1)),
-                                Component.text("Close this dialog"),
-                                100,
-                                null
-                        )
-                ))
-        );
+        Location loc = p.getLocation();
+        MazeOptions opts = new MazeOptions();
+        opts.x = loc.getBlockX();
+        opts.y = loc.getBlockY();
+        opts.z = loc.getBlockZ();
+        opts.world = p.getWorld().getName();
+        opts.mazeSizeX = defaultOpts.mazeSizeX();
+        opts.mazeSizeZ = defaultOpts.mazeSizeZ();
+        opts.cellSize = defaultOpts.cellSize();
+        opts.wallHeight = defaultOpts.wallHeight();
+        opts.layers = defaultOpts.layers();
+        opts.stairs = defaultOpts.stairs();
+        opts.additionalExits = defaultOpts.additionalExits();
+        opts.erosion = defaultOpts.erosion();
+        opts.hasExits = defaultOpts.hasExits();
+        opts.hasRoom = defaultOpts.hasRoom();
+        opts.closed = defaultOpts.closed();
+        opts.hollow = defaultOpts.hollow();
+        opts.layDown = defaultOpts.layDown();
+        opts.themeName = defaultOpts.themeName();
 
-        p.showDialog(dialog);
+        handler.sendDialog(p, opts, filled -> {
+            p.sendMessage(Component.text("Maze configuration received!", NamedTextColor.GREEN));
+        });
+
         return true;
-    }
-
-    private DialogActionCallback createMazeDialogCallback() {
-        return (view, audience) -> {
-            if (!(audience instanceof Player player)) return;
-
-            int mazeSizeX = view.getFloat("mazeSizeX").intValue();
-            int mazeSizeZ = view.getFloat("mazeSizeZ").intValue();
-            int cellSize = view.getFloat("cellSize").intValue();
-            int wallHeight = view.getFloat("wallHeight").intValue();
-            int layers = view.getFloat("layers").intValue();
-            int stairs = view.getFloat("stairs").intValue();
-            int additionalExits = view.getFloat("additionalExits").intValue();
-            float erosionRaw = view.getFloat("erosion");
-            Boolean hasExits = view.getBoolean("hasExits");
-            Boolean hasRoom = view.getBoolean("hasRoom");
-            Boolean closed = view.getBoolean("closed");
-            Boolean hollow = view.getBoolean("hollow");
-            Boolean layDown = view.getBoolean("layDown");
-            String themeName = view.getText("themeName");
-            if (themeName == null) themeName = "desert";
-
-            MazeOptions opt = new MazeOptions();
-            opt.mazeSizeX = mazeSizeX;
-            opt.mazeSizeZ = mazeSizeZ;
-            opt.cellSize = cellSize;
-            opt.wallHeight = wallHeight;
-            opt.layers = Math.max(1, layers);
-            opt.stairs = Math.max(1, stairs);
-            opt.additionalExits = Math.max(0, additionalExits);
-            opt.erosion = (float)(int)(erosionRaw * 100) / 10000.0f;
-            opt.hasExits = hasExits != null && hasExits;
-            opt.hasRoom = hasRoom != null && hasRoom;
-            opt.closed = closed != null && closed;
-            opt.hollow = hollow != null && hollow;
-            opt.themeName = themeName;
-            opt.layDown = layDown != null && layDown;
-
-            Location l = player.getLocation();
-            opt.x = l.getBlockX();
-            opt.y = l.getBlockY();
-            opt.z = l.getBlockZ();
-            opt.world = player.getWorld().getName();
-
-            Theme theme = Themes.getTheme(opt.themeName);
-            Location origin = new Location(Bukkit.getWorld(opt.world), opt.x, opt.y, opt.z);
-
-            if (opt.layers > 1) {
-                MultiLevelMazePlanner planner = new MultiLevelMazePlanner(
-                        opt.mazeSizeX, opt.mazeSizeZ, opt.layers, opt.stairs,
-                        opt.additionalExits, opt.erosion,
-                        opt.hasRoom, opt.roomSizeX, opt.roomSizeZ,
-                        opt.hasExits, opt.layDown
-                );
-                MultiLevelMazePlanner.MultiLevelPlan plan = planner.generatePlan();
-                boolean setBlockData = MazeGeneratorPlugin.plugin.getConfig().getBoolean("set-block-data", false);
-                MultiLevelMazeStreamPlacer streamPlacer = new MultiLevelMazeStreamPlacer(
-                        theme, origin, opt.wallHeight, opt.cellSize,
-                        opt.closed, opt.hollow, plan, setBlockData
-                );
-                LoadBalancer lb = new LoadBalancer(plugin, player, streamPlacer);
-                lb.start();
-                player.sendMessage(Component.text("Multi-level maze generation started!", NamedTextColor.GREEN));
-                return;
-            }
-
-            if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
-                player.sendMessage(Component.text("Cannot lay down maze here (no valid ground).", NamedTextColor.RED));
-                return;
-            }
-
-            MazeStreamPlacer streamPlacer = new MazeStreamPlacer(
-                    theme,
-                    origin,
-                    opt.wallHeight,
-                    opt.cellSize,
-                    opt.closed,
-                    opt.hollow,
-                    opt.mazeSizeX,
-                    opt.mazeSizeZ,
-                    opt.additionalExits,
-                    opt.erosion,
-                    opt.hasRoom,
-                    opt.roomSizeX,
-                    opt.roomSizeZ,
-                    opt.hasExits,
-                    opt.layDown
-            );
-            LoadBalancer lb = new LoadBalancer(plugin, player, streamPlacer);
-            lb.start();
-            player.sendMessage(Component.text("Maze generation started!", NamedTextColor.GREEN));
-        };
     }
 
     private boolean handleGeneration(CommandSender sender, String[] args) {
