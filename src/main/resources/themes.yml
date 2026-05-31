@@ -16,6 +16,9 @@ desert:
     SANDSTONE: 3
     RED_SANDSTONE: 2
     END_STONE: 1
+  ladder:
+    LADDER: 100
+    OAK_FENCE: 5
 forest:
   floor:
     GRASS_BLOCK: 20
@@ -34,6 +37,9 @@ forest:
     OAK_LOG: 3
     SPRUCE_LOG: 2
     BIRCH_LOG: 1
+  ladder:
+    LADDER: 100
+    OAK_FENCE: 5
 snowy:
   floor:
     SNOW_BLOCK: 25
@@ -51,6 +57,9 @@ snowy:
     SNOW_BLOCK: 3
     WHITE_CONCRETE: 2
     LIGHT_GRAY_WOOL: 1
+  ladder:
+    LADDER: 100
+    SPRUCE_FENCE: 5
 ocean:
   floor:
     SAND: 20
@@ -68,6 +77,9 @@ ocean:
     PRISMARINE: 3
     DARK_PRISMARINE: 2
     SEA_LANTERN: 1
+  ladder:
+    LADDER: 100
+    IRON_BARS: 5
 mountain:
   floor:
     STONE: 20
@@ -86,6 +98,9 @@ mountain:
     STONE: 3
     COBBLESTONE: 2
     POLISHED_DIORITE: 1
+  ladder:
+    LADDER: 100
+    IRON_BARS: 5
 jungle:
   floor:
     GRASS_BLOCK: 20
@@ -104,3 +119,6 @@ jungle:
     JUNGLE_LOG: 3
     JUNGLE_PLANKS: 2
     MOSSY_COBBLESTONE: 1
+  ladder:
+    LADDER: 100
+    JUNGLE_FENCE: 5
