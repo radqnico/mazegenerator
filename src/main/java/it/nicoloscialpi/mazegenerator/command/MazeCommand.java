@@ -1,8 +1,8 @@
 package it.nicoloscialpi.mazegenerator.command;
 
 import io.papermc.paper.dialog.Dialog;
+import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.DialogBase;
-import io.papermc.paper.registry.data.dialog.action.ActionButton;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.action.DialogActionCallback;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
@@ -388,10 +388,10 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         List<SingleOptionDialogInput.OptionEntry> themeEntries = new ArrayList<>();
         if (Themes.getThemes() != null) {
             Themes.getThemes().keySet().forEach(name ->
-                themeEntries.add(SingleOptionDialogInput.OptionEntry.create(Component.text(name), name)));
+                themeEntries.add(SingleOptionDialogInput.OptionEntry.create(name, Component.text(name), false)));
         }
         if (themeEntries.isEmpty()) {
-            themeEntries.add(SingleOptionDialogInput.OptionEntry.create(Component.text("desert"), "desert"));
+            themeEntries.add(SingleOptionDialogInput.OptionEntry.create("desert", Component.text("desert"), true));
         }
 
         Dialog dialog = Dialog.create(builder -> builder
