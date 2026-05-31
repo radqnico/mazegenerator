@@ -401,12 +401,13 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                                         .step(1f).initial(5f).width(300).build(),
                                 DialogInput.numberRange("mazeSizeZ", Component.text("Maze Depth (cells)", NamedTextColor.GREEN), 1f, 100f)
                                         .step(1f).initial(5f).width(300).build(),
+                                DialogInput.bool("goUnsafe", Component.text("Go Unsafe (1000x1000, 100% erosion)", NamedTextColor.RED)),
                                 DialogInput.numberRange("cellSize", Component.text("Cell Size", NamedTextColor.GREEN), 1f, 10f)
                                         .step(1f).initial(1f).width(300).build(),
                                 DialogInput.numberRange("wallHeight", Component.text("Wall Height", NamedTextColor.GREEN), 1f, 20f)
                                         .step(1f).initial(3f).width(300).build(),
-                                DialogInput.numberRange("erosion", Component.text("Erosion %", NamedTextColor.GREEN), 0f, 100f)
-                                        .step(0.01f).initial(0f).width(300).build(),
+                                DialogInput.numberRange("erosion", Component.text("Erosion %", NamedTextColor.GREEN), 0f, 20f)
+                                        .step(1f).initial(0f).width(300).build(),
                                 DialogInput.bool("hasExits", Component.text("Generate Exits?", NamedTextColor.GREEN)).build(),
                                 DialogInput.bool("hasRoom", Component.text("Generate Room?", NamedTextColor.GREEN)).build(),
                                 DialogInput.bool("closed", Component.text("Closed Maze?", NamedTextColor.GREEN)).build(),
@@ -438,11 +439,14 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         return (view, audience) -> {
             if (!(audience instanceof Player player)) return;
 
+            Boolean goUnsafe = view.getBoolean("goUnsafe");
+            boolean unsafe = goUnsafe != null && goUnsafe;
+
             int mazeSizeX = view.getFloat("mazeSizeX").intValue();
             int mazeSizeZ = view.getFloat("mazeSizeZ").intValue();
             int cellSize = view.getFloat("cellSize").intValue();
             int wallHeight = view.getFloat("wallHeight").intValue();
-            int erosion = view.getFloat("erosion").intValue();
+            float erosionRaw = view.getFloat("erosion");
             Boolean hasExits = view.getBoolean("hasExits");
             Boolean hasRoom = view.getBoolean("hasRoom");
             Boolean closed = view.getBoolean("closed");
@@ -451,16 +455,17 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             if (themeName == null) themeName = "desert";
 
             MazeOptions opt = new MazeOptions();
-            opt.mazeSizeX = mazeSizeX;
-            opt.mazeSizeZ = mazeSizeZ;
+            opt.mazeSizeX = unsafe ? mazeSizeX : Math.min(mazeSizeX, 100);
+            opt.mazeSizeZ = unsafe ? mazeSizeZ : Math.min(mazeSizeZ, 100);
             opt.cellSize = cellSize;
             opt.wallHeight = wallHeight;
-            opt.erosion = (float)(int)(erosion * 100) / 10000.0f;
+            opt.erosion = unsafe ? (float)(int)(erosionRaw * 100) / 10000.0f : (float)(int)(erosionRaw * 100) / 10000.0f;
             opt.hasExits = hasExits != null && hasExits;
             opt.hasRoom = hasRoom != null && hasRoom;
             opt.closed = closed != null && closed;
             opt.hollow = hollow != null && hollow;
             opt.themeName = themeName;
+            opt.layDown = false;
 
             Location l = player.getLocation();
             opt.x = l.getBlockX();
