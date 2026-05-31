@@ -22,13 +22,8 @@ public final class MazePreviewer {
     private MazePreviewer() {}
 
     private static final Map<UUID, BukkitTask> ACTIVE = new HashMap<>();
-    private static final double MAX_VIEW_DISTANCE = 100.0;
+    private static final double MAX_VIEW_DISTANCE = 80.0;
     private static final double MAX_VIEW_DISTANCE_SQ = MAX_VIEW_DISTANCE * MAX_VIEW_DISTANCE;
-    private static final Particle[] PREVIEW_PARTICLES = {
-            Particle.END_ROD,
-            Particle.FLASH,
-            Particle.INSTANT_EFFECT
-    };
 
     public static void showPreview(JavaPlugin plugin, Player player, Location origin, int mazeSizeX, int mazeSizeZ, int cellSize, int wallHeight, boolean layDown) {
         if (plugin == null || player == null || origin == null || player.getWorld() == null) return;
@@ -129,25 +124,15 @@ public final class MazePreviewer {
         }
     }
 
-    private static int tickCounter = 0;
-
     private static void spawnAll(List<Location> points, Player viewer) {
         if (viewer == null) return;
         Location viewerLoc = viewer.getLocation();
-        int particleIndex = tickCounter % PREVIEW_PARTICLES.length;
-        Particle particle = PREVIEW_PARTICLES[particleIndex];
-        tickCounter++;
         for (Location loc : points) {
             World w = loc.getWorld();
             if (w == null) continue;
             if (viewerLoc.getWorld() != null && !viewerLoc.getWorld().equals(w)) continue;
-            double distSq = viewerLoc.distanceSquared(loc);
-            if (distSq > MAX_VIEW_DISTANCE_SQ) continue;
-            if (distSq > (MAX_VIEW_DISTANCE / 2) * (MAX_VIEW_DISTANCE / 2)) {
-                w.spawnParticle(particle, loc.getX(), loc.getY(), loc.getZ(), 3, 0, 0, 0, 0);
-            } else {
-                w.spawnParticle(particle, loc.getX(), loc.getY(), loc.getZ(), 6, 0, 0, 0, 0);
-            }
+            if (viewerLoc.distanceSquared(loc) > MAX_VIEW_DISTANCE_SQ) continue;
+            w.spawnParticle(Particle.END_ROD, loc.getX(), loc.getY(), loc.getZ(), 2, 0, 0, 0, 0);
         }
     }
 
