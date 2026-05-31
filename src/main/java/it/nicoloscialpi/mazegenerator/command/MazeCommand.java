@@ -7,6 +7,7 @@ import io.papermc.paper.registry.data.dialog.DialogType;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.SingleOptionDialogInput;
 import io.papermc.paper.registry.data.dialog.action.ActionButton;
+import io.papermc.paper.registry.data.dialog.action.ClickCallback;
 import io.papermc.paper.registry.data.dialog.action.DialogActionCallback;
 import it.nicoloscialpi.mazegenerator.MessageFileReader;
 import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer;
