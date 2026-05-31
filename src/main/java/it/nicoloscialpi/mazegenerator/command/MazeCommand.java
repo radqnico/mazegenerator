@@ -405,9 +405,8 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                                         .step(1f).initial(1f).width(300).build(),
                                 DialogInput.numberRange("wallHeight", Component.text("Wall Height", NamedTextColor.GREEN), 1f, 20f)
                                         .step(1f).initial(3f).width(300).build(),
-                                DialogInput.numberRange("erosion", Component.text("Erosion (0-100%)", NamedTextColor.GREEN), 0f, 100f)
-                                        .step(5f).initial(0f).width(300)
-                                        .labelFormat("%s%% holes in walls").build(),
+                                DialogInput.numberRange("erosion", Component.text("Erosion", NamedTextColor.GREEN), 0f, 100f)
+                                        .step(5f).initial(0f).width(300).build(),
                                 DialogInput.bool("hasExits", Component.text("Generate Exits?", NamedTextColor.GREEN)).build(),
                                 DialogInput.bool("hasRoom", Component.text("Generate Room?", NamedTextColor.GREEN)).build(),
                                 DialogInput.bool("closed", Component.text("Closed Maze?", NamedTextColor.GREEN)).build(),
