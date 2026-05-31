@@ -2,10 +2,10 @@ package it.nicoloscialpi.mazegenerator.command;
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogAction;
-import io.papermc.paper.registry.data.dialog.DialogBody;
 import io.papermc.paper.registry.data.dialog.DialogInput;
 import io.papermc.paper.registry.data.dialog.DialogType;
 import io.papermc.paper.registry.data.dialog.DialogBase;
+import io.papermc.paper.registry.data.dialog.SingleOptionDialogInput;
 import io.papermc.paper.registry.data.dialog.action.ActionButton;
 import io.papermc.paper.registry.data.dialog.action.DialogActionCallback;
 import it.nicoloscialpi.mazegenerator.MessageFileReader;
@@ -15,7 +15,6 @@ import it.nicoloscialpi.mazegenerator.themes.Theme;
 import it.nicoloscialpi.mazegenerator.themes.ThemeConfigurationReader;
 import it.nicoloscialpi.mazegenerator.themes.Themes;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
@@ -385,12 +384,13 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        List<String> themeNames = new ArrayList<>();
+        List<SingleOptionDialogInput.OptionEntry> themeEntries = new ArrayList<>();
         if (Themes.getThemes() != null) {
-            Themes.getThemes().keySet().forEach(themeNames::add);
+            Themes.getThemes().keySet().forEach(name ->
+                themeEntries.add(SingleOptionDialogInput.OptionEntry.create(Component.text(name), name)));
         }
-        if (themeNames.isEmpty()) {
-            themeNames.add("desert");
+        if (themeEntries.isEmpty()) {
+            themeEntries.add(SingleOptionDialogInput.OptionEntry.create(Component.text("desert"), "desert"));
         }
 
         Dialog dialog = Dialog.create(builder -> builder
@@ -411,18 +411,22 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                                 DialogInput.bool("hasRoom", Component.text("Generate Room?", NamedTextColor.GREEN)),
                                 DialogInput.bool("closed", Component.text("Closed Maze?", NamedTextColor.GREEN)),
                                 DialogInput.bool("hollow", Component.text("Hollow Maze?", NamedTextColor.GREEN)),
-                                DialogInput.singleOption("themeName", Component.text("Theme", NamedTextColor.GREEN), themeNames)
+                                DialogInput.singleOption("themeName", Component.text("Theme", NamedTextColor.GREEN), themeEntries)
                         ))
                         .build())
                 .type(DialogType.confirmation(
-                        ActionButton.builder(Component.text("Generate Maze", TextColor.color(0xAEFFC1)))
-                                .tooltip(Component.text("Click to generate the maze"))
-                                .action(DialogAction.customClick(MAZE_DIALOG_CALLBACK, ClickCallback.Options.builder().uses(1).build()))
-                                .build(),
-                        ActionButton.builder(Component.text("Cancel", TextColor.color(0xFFA0B1)))
-                                .tooltip(Component.text("Close this dialog"))
-                                .action(DialogAction.closeDialog())
-                                .build()
+                        ActionButton.create(
+                                Component.text("Generate Maze", TextColor.color(0xAEFFC1)),
+                                Component.text("Click to generate the maze"),
+                                100,
+                                DialogAction.customClick(createMazeDialogCallback(), ClickCallback.Options.builder().uses(1).build())
+                        ),
+                        ActionButton.create(
+                                Component.text("Cancel", TextColor.color(0xFFA0B1)),
+                                Component.text("Close this dialog"),
+                                100,
+                                null
+                        )
                 ))
         );
 
@@ -430,52 +434,54 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private static final DialogActionCallback MAZE_DIALOG_CALLBACK = (view, audience) -> {
-        if (!(audience instanceof Player player)) return;
+    private DialogActionCallback createMazeDialogCallback() {
+        return (view, audience) -> {
+            if (!(audience instanceof Player player)) return;
 
-        int mazeSizeX = view.getFloat("mazeSizeX").intValue();
-        int mazeSizeZ = view.getFloat("mazeSizeZ").intValue();
-        int cellSize = view.getFloat("cellSize").intValue();
-        int wallHeight = view.getFloat("wallHeight").intValue();
-        int erosion = view.getFloat("erosion").intValue();
-        boolean hasExits = view.getBoolean("hasExits");
-        boolean hasRoom = view.getBoolean("hasRoom");
-        boolean closed = view.getBoolean("closed");
-        boolean hollow = view.getBoolean("hollow");
-        String themeName = view.getString("themeName");
-        if (themeName == null) themeName = "desert";
+            int mazeSizeX = view.getFloat("mazeSizeX").intValue();
+            int mazeSizeZ = view.getFloat("mazeSizeZ").intValue();
+            int cellSize = view.getFloat("cellSize").intValue();
+            int wallHeight = view.getFloat("wallHeight").intValue();
+            int erosion = view.getFloat("erosion").intValue();
+            Boolean hasExits = view.getBoolean("hasExits");
+            Boolean hasRoom = view.getBoolean("hasRoom");
+            Boolean closed = view.getBoolean("closed");
+            Boolean hollow = view.getBoolean("hollow");
+            String themeName = view.getText("themeName");
+            if (themeName == null) themeName = "desert";
 
-        MazeOptions opt = new MazeOptions();
-        opt.mazeSizeX = mazeSizeX;
-        opt.mazeSizeZ = mazeSizeZ;
-        opt.cellSize = cellSize;
-        opt.wallHeight = wallHeight;
-        opt.erosion = erosion / 100.0;
-        opt.hasExits = hasExits;
-        opt.hasRoom = hasRoom;
-        opt.closed = closed;
-        opt.hollow = hollow;
-        opt.themeName = themeName;
+            MazeOptions opt = new MazeOptions();
+            opt.mazeSizeX = mazeSizeX;
+            opt.mazeSizeZ = mazeSizeZ;
+            opt.cellSize = cellSize;
+            opt.wallHeight = wallHeight;
+            opt.erosion = erosion / 100.0;
+            opt.hasExits = hasExits != null && hasExits;
+            opt.hasRoom = hasRoom != null && hasRoom;
+            opt.closed = closed != null && closed;
+            opt.hollow = hollow != null && hollow;
+            opt.themeName = themeName;
 
-        Location l = player.getLocation();
-        opt.x = l.getBlockX();
-        opt.y = l.getBlockY();
-        opt.z = l.getBlockZ();
-        opt.world = player.getWorld().getName();
+            Location l = player.getLocation();
+            opt.x = l.getBlockX();
+            opt.y = l.getBlockY();
+            opt.z = l.getBlockZ();
+            opt.world = player.getWorld().getName();
 
-        Theme theme = Themes.getTheme(opt.themeName);
-        Location origin = new Location(Bukkit.getWorld(opt.world), opt.x, opt.y, opt.z);
+            Theme theme = Themes.getTheme(opt.themeName);
+            Location origin = new Location(Bukkit.getWorld(opt.world), opt.x, opt.y, opt.z);
 
-        if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
-            player.sendMessage(Component.text("Cannot lay down maze here (no valid ground).", NamedTextColor.RED));
-            return;
-        }
+            if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
+                player.sendMessage(Component.text("Cannot lay down maze here (no valid ground).", NamedTextColor.RED));
+                return;
+            }
 
-        PendingBuild pending = new PendingBuild(opt, theme, origin);
-        PENDING.put(player.getUniqueId(), pending);
-        MazePreviewer.showPreview(plugin, player, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight, opt.layDown);
-        player.sendMessage(Component.text("Preview shown with particles. Use /maze confirm to start or /maze cancel to discard.", NamedTextColor.YELLOW));
-    };
+            PendingBuild pending = new PendingBuild(opt, theme, origin);
+            PENDING.put(player.getUniqueId(), pending);
+            MazePreviewer.showPreview(plugin, player, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight, opt.layDown);
+            player.sendMessage(Component.text("Preview shown with particles. Use /maze confirm to start or /maze cancel to discard.", NamedTextColor.YELLOW));
+        };
+    }
 
     private boolean handleGeneration(CommandSender sender, String[] args) {
         MazeOptions opt = parseOptions(sender, args);
