@@ -401,7 +401,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                                         .step(1f).initial(5f).width(300).build(),
                                 DialogInput.numberRange("mazeSizeZ", Component.text("Maze Depth (cells)", NamedTextColor.GREEN), 1f, 100f)
                                         .step(1f).initial(5f).width(300).build(),
-                                DialogInput.bool("goUnsafe", Component.text("Go Unsafe (1000x1000, 100% erosion)", NamedTextColor.RED)),
+                                DialogInput.bool("goUnsafe", Component.text("Go Unsafe (1000x1000, 100% erosion)", NamedTextColor.RED)).build(),
                                 DialogInput.numberRange("cellSize", Component.text("Cell Size", NamedTextColor.GREEN), 1f, 10f)
                                         .step(1f).initial(1f).width(300).build(),
                                 DialogInput.numberRange("wallHeight", Component.text("Wall Height", NamedTextColor.GREEN), 1f, 20f)
