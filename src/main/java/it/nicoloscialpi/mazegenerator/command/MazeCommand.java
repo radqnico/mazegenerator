@@ -119,26 +119,26 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length > 0) {
-            String sub = args[0].toLowerCase(Locale.ROOT);
-            switch (sub) {
-                case "stop":
-                    return handleStop(sender);
-                case "confirm":
-                    return handleConfirm(sender);
-                case "cancel":
-                    return handleCancel(sender);
-                case "status":
-                    return handleStatus(sender);
-                case "help":
-                    return handleHelp(sender);
-                case "reload":
-                    return handleReload(sender);
-                case "dialog":
-                    return handleDialog(sender);
-                default:
-                    break;
-            }
+        if (args.length == 0) {
+            return handleDialog(sender);
+        }
+
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "stop":
+                return handleStop(sender);
+            case "confirm":
+                return handleConfirm(sender);
+            case "cancel":
+                return handleCancel(sender);
+            case "status":
+                return handleStatus(sender);
+            case "help":
+                return handleHelp(sender);
+            case "reload":
+                return handleReload(sender);
+            default:
+                break;
         }
 
         return handleGeneration(sender, args);
@@ -455,7 +455,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             opt.mazeSizeZ = mazeSizeZ;
             opt.cellSize = cellSize;
             opt.wallHeight = wallHeight;
-            opt.erosion = erosion / 100.0;
+            opt.erosion = (float)(int)(erosion * 100) / 10000.0f;
             opt.hasExits = hasExits != null && hasExits;
             opt.hasRoom = hasRoom != null && hasRoom;
             opt.closed = closed != null && closed;
