@@ -397,16 +397,16 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         Dialog dialog = Dialog.create(builder -> builder.empty()
                 .base(DialogBase.builder(Component.text("Maze Configuration", NamedTextColor.GOLD))
                         .inputs(List.of(
-                                DialogInput.numberRange("mazeSizeX", Component.text("Maze Width (cells)", NamedTextColor.GREEN), 1f, 100f)
+                                DialogInput.numberRange("mazeSizeX", Component.text("Maze Width (cells)", NamedTextColor.GREEN), 1f, 1000f)
                                         .step(1f).initial(5f).width(300).build(),
-                                DialogInput.numberRange("mazeSizeZ", Component.text("Maze Depth (cells)", NamedTextColor.GREEN), 1f, 100f)
+                                DialogInput.numberRange("mazeSizeZ", Component.text("Maze Depth (cells)", NamedTextColor.GREEN), 1f, 1000f)
                                         .step(1f).initial(5f).width(300).build(),
-                                DialogInput.bool("goUnsafe", Component.text("Go Unsafe (1000x1000, 100% erosion)", NamedTextColor.RED)).build(),
+                                DialogInput.bool("goUnsafe", Component.text("Go Unsafe", NamedTextColor.RED)).build(),
                                 DialogInput.numberRange("cellSize", Component.text("Cell Size", NamedTextColor.GREEN), 1f, 10f)
                                         .step(1f).initial(1f).width(300).build(),
                                 DialogInput.numberRange("wallHeight", Component.text("Wall Height", NamedTextColor.GREEN), 1f, 20f)
                                         .step(1f).initial(3f).width(300).build(),
-                                DialogInput.numberRange("erosion", Component.text("Erosion %", NamedTextColor.GREEN), 0f, 20f)
+                                DialogInput.numberRange("erosion", Component.text("Erosion %", NamedTextColor.GREEN), 0f, 100f)
                                         .step(1f).initial(0f).width(300).build(),
                                 DialogInput.bool("hasExits", Component.text("Generate Exits?", NamedTextColor.GREEN)).build(),
                                 DialogInput.bool("hasRoom", Component.text("Generate Room?", NamedTextColor.GREEN)).build(),
@@ -455,11 +455,11 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             if (themeName == null) themeName = "desert";
 
             MazeOptions opt = new MazeOptions();
-            opt.mazeSizeX = unsafe ? mazeSizeX : Math.min(mazeSizeX, 100);
-            opt.mazeSizeZ = unsafe ? mazeSizeZ : Math.min(mazeSizeZ, 100);
+            opt.mazeSizeX = mazeSizeX;
+            opt.mazeSizeZ = mazeSizeZ;
             opt.cellSize = cellSize;
             opt.wallHeight = wallHeight;
-            opt.erosion = unsafe ? (float)(int)(erosionRaw * 100) / 10000.0f : (float)(int)(erosionRaw * 100) / 10000.0f;
+            opt.erosion = (float)(int)(erosionRaw * 100) / 10000.0f;
             opt.hasExits = hasExits != null && hasExits;
             opt.hasRoom = hasRoom != null && hasRoom;
             opt.closed = closed != null && closed;
