@@ -481,10 +481,26 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 return;
             }
 
-            PendingBuild pending = new PendingBuild(opt, theme, origin);
-            PENDING.put(player.getUniqueId(), pending);
-            MazePreviewer.showPreview(plugin, player, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight, opt.layDown);
-            player.sendMessage(Component.text("Preview shown with particles. Use /maze confirm to start or /maze cancel to discard.", NamedTextColor.YELLOW));
+            MazeStreamPlacer streamPlacer = new MazeStreamPlacer(
+                    theme,
+                    origin,
+                    opt.wallHeight,
+                    opt.cellSize,
+                    opt.closed,
+                    opt.hollow,
+                    opt.mazeSizeX,
+                    opt.mazeSizeZ,
+                    opt.additionalExits,
+                    opt.erosion,
+                    opt.hasRoom,
+                    opt.roomSizeX,
+                    opt.roomSizeZ,
+                    opt.hasExits,
+                    opt.layDown
+            );
+            LoadBalancer lb = new LoadBalancer(plugin, player, streamPlacer);
+            lb.start();
+            player.sendMessage(Component.text("Maze generation started!", NamedTextColor.GREEN));
         };
     }
 
