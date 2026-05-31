@@ -97,9 +97,10 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
     }
 
     private void placeNormalCell(int worldX, int worldY, int worldZ, byte type) {
+        boolean isHole = (type == HOLE);
         for (int x = 0; x < cellSize; x++) {
             for (int z = 0; z < cellSize; z++) {
-                Material material = theme.getRandomFloorMaterial();
+                Material material = isHole ? Material.AIR : theme.getRandomFloorMaterial();
                 setBlock(worldX + x, worldY + 0, worldZ + z, material);
             }
         }
@@ -137,7 +138,11 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
         }
 
         int yTop = height;
-        if (closed || type == WALL) {
+        boolean ceilingForCell = (closed || type == WALL);
+        if (type == HOLE) {
+            ceilingForCell = !ceilingForCell;
+        }
+        if (ceilingForCell) {
             if (hollow) {
                 for (int x = 0; x < cellSize; x++) {
                     Material m1 = theme.getRandomTopMaterial();
