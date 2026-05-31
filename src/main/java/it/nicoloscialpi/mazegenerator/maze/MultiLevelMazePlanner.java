@@ -8,7 +8,7 @@ public class MultiLevelMazePlanner {
 
     public record StairPosition(int r, int c, int direction) {}
     public record LayerGrid(int layerIndex, byte[][] grid, List<StairPosition> stairDown) {}
-    public record MultiLevelPlan(byte[][][] grids, List<List<StairPosition>> stairPositions, int sizeN, int sizeM, int layers, int stairs) {}
+    public record MultiLevelPlan(byte[][][] grids, List<List<StairPosition>> stairPositions, int sizeN, int sizeM, int layers, int stairs, boolean sharedGrid) {}
 
     private final int sizeN;
     private final int sizeM;
@@ -20,12 +20,13 @@ public class MultiLevelMazePlanner {
     private final int roomHeight;
     private final int roomWidth;
     private final boolean hasExits;
+    private final boolean sharedGrid;
     private final Random random = new Random();
 
     public MultiLevelMazePlanner(int sizeN, int sizeM, int layers, int stairs,
                                   int additionalExits, double holeProbability,
                                   boolean hasRoom, int roomHeight, int roomWidth,
-                                  boolean hasExits) {
+                                  boolean hasExits, boolean sharedGrid) {
         this.sizeN = SizeParser.ensureOdd(sizeN);
         this.sizeM = SizeParser.ensureOdd(sizeM);
         this.layers = Math.max(1, layers);
@@ -36,12 +37,19 @@ public class MultiLevelMazePlanner {
         this.roomHeight = roomHeight;
         this.roomWidth = roomWidth;
         this.hasExits = hasExits;
+        this.sharedGrid = sharedGrid;
     }
 
     public MultiLevelPlan generatePlan() {
+        byte[][] sharedGrid = generateSingleGrid();
+
         List<byte[][]> grids = new ArrayList<>(layers);
         for (int i = 0; i < layers; i++) {
-            grids.add(generateSingleGrid());
+            if (sharedGrid) {
+                grids.add(sharedGrid);
+            } else {
+                grids.add(generateSingleGrid());
+            }
         }
 
         List<List<StairPosition>> stairPositions = new ArrayList<>(layers - 1);
@@ -57,7 +65,7 @@ public class MultiLevelMazePlanner {
         return new MultiLevelPlan(
                 gridsArray,
                 stairPositions,
-                sizeN, sizeM, layers, stairs
+                sizeN, sizeM, layers, stairs, sharedGrid
         );
     }
 

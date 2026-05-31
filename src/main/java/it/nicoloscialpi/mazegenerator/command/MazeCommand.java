@@ -164,7 +164,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     opt.mazeSizeX, opt.mazeSizeZ, opt.layers, opt.stairs,
                     opt.additionalExits, opt.erosion,
                     opt.hasRoom, opt.roomSizeX, opt.roomSizeZ,
-                    opt.hasExits
+                    opt.hasExits, opt.layDown
             );
             MultiLevelMazePlanner.MultiLevelPlan plan = planner.generatePlan();
             boolean setBlockData = MazeGeneratorPlugin.plugin.getConfig().getBoolean("set-block-data", false);
@@ -459,6 +459,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                                 DialogInput.bool("hasRoom", Component.text("Generate Room?", NamedTextColor.GREEN)).build(),
                                 DialogInput.bool("closed", Component.text("Closed Maze?", NamedTextColor.GREEN)).build(),
                                 DialogInput.bool("hollow", Component.text("Hollow Maze?", NamedTextColor.GREEN)).build(),
+                                DialogInput.bool("layDown", Component.text("Lay Down on Terrain?", NamedTextColor.GREEN)).build(),
                                 DialogInput.singleOption("themeName", Component.text("Theme", NamedTextColor.GREEN), themeEntries).build()
                         ))
                         .build())
@@ -500,6 +501,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             Boolean hasRoom = view.getBoolean("hasRoom");
             Boolean closed = view.getBoolean("closed");
             Boolean hollow = view.getBoolean("hollow");
+            Boolean layDown = view.getBoolean("layDown");
             String themeName = view.getText("themeName");
             if (themeName == null) themeName = "desert";
 
@@ -519,7 +521,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             opt.closed = closed != null && closed;
             opt.hollow = hollow != null && hollow;
             opt.themeName = themeName;
-            opt.layDown = false;
+            opt.layDown = layDown != null && layDown;
 
             Location l = player.getLocation();
             opt.x = l.getBlockX();
@@ -535,7 +537,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                         opt.mazeSizeX, opt.mazeSizeZ, opt.layers, opt.stairs,
                         opt.additionalExits, opt.erosion,
                         opt.hasRoom, opt.roomSizeX, opt.roomSizeZ,
-                        opt.hasExits
+                        opt.hasExits, opt.layDown
                 );
                 MultiLevelMazePlanner.MultiLevelPlan plan = planner.generatePlan();
                 boolean setBlockData = MazeGeneratorPlugin.plugin.getConfig().getBoolean("set-block-data", false);
