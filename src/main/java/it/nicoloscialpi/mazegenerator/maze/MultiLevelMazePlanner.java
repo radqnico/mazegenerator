@@ -41,12 +41,12 @@ public class MultiLevelMazePlanner {
     }
 
     public MultiLevelPlan generatePlan() {
-        byte[][] sharedGrid = generateSingleGrid();
+        byte[][] baseGrid = generateSingleGrid();
 
         List<byte[][]> grids = new ArrayList<>(layers);
         for (int i = 0; i < layers; i++) {
             if (sharedGrid) {
-                grids.add(sharedGrid);
+                grids.add(baseGrid);
             } else {
                 grids.add(generateSingleGrid());
             }

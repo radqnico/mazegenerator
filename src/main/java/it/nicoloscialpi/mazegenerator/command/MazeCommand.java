@@ -449,10 +449,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                                         .step(1f).initial(1f).width(300).build(),
                                 DialogInput.numberRange("additionalExits", Component.text("Additional Exits", NamedTextColor.GREEN), 0f, 10f)
                                         .step(1f).initial(0f).width(300).build(),
-                                DialogInput.numberRange("roomSizeX", Component.text("Room Width (cells)", NamedTextColor.GREEN), 1f, 20f)
-                                        .step(1f).initial(3f).width(300).build(),
-                                DialogInput.numberRange("roomSizeZ", Component.text("Room Depth (cells)", NamedTextColor.GREEN), 1f, 20f)
-                                        .step(1f).initial(3f).width(300).build(),
                                 DialogInput.numberRange("erosion", Component.text("Erosion %", NamedTextColor.GREEN), 0f, 20f)
                                         .step(1f).initial(0f).width(300).build(),
                                 DialogInput.bool("hasExits", Component.text("Generate Exits?", NamedTextColor.GREEN)).build(),
@@ -494,8 +490,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             int layers = view.getFloat("layers").intValue();
             int stairs = view.getFloat("stairs").intValue();
             int additionalExits = view.getFloat("additionalExits").intValue();
-            int roomSizeX = view.getFloat("roomSizeX").intValue();
-            int roomSizeZ = view.getFloat("roomSizeZ").intValue();
             float erosionRaw = view.getFloat("erosion");
             Boolean hasExits = view.getBoolean("hasExits");
             Boolean hasRoom = view.getBoolean("hasRoom");
@@ -513,8 +507,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             opt.layers = Math.max(1, layers);
             opt.stairs = Math.max(1, stairs);
             opt.additionalExits = Math.max(0, additionalExits);
-            opt.roomSizeX = Math.max(1, roomSizeX);
-            opt.roomSizeZ = Math.max(1, roomSizeZ);
             opt.erosion = (float)(int)(erosionRaw * 100) / 10000.0f;
             opt.hasExits = hasExits != null && hasExits;
             opt.hasRoom = hasRoom != null && hasRoom;
