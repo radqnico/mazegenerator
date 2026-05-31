@@ -1,14 +1,14 @@
 package it.nicoloscialpi.mazegenerator.command;
 
 import io.papermc.paper.dialog.Dialog;
-import io.papermc.paper.dialog.DialogAction;
-import io.papermc.paper.registry.data.dialog.DialogInput;
-import io.papermc.paper.registry.data.dialog.DialogType;
 import io.papermc.paper.registry.data.dialog.DialogBase;
-import io.papermc.paper.registry.data.dialog.SingleOptionDialogInput;
 import io.papermc.paper.registry.data.dialog.action.ActionButton;
-import io.papermc.paper.registry.data.dialog.action.ClickCallback;
+import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.action.DialogActionCallback;
+import io.papermc.paper.registry.data.dialog.input.DialogInput;
+import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput;
+import io.papermc.paper.registry.data.dialog.type.DialogType;
+import net.kyori.adventure.text.event.ClickCallback;
 import it.nicoloscialpi.mazegenerator.MessageFileReader;
 import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer;
 import it.nicoloscialpi.mazegenerator.maze.MazeStreamPlacer;
