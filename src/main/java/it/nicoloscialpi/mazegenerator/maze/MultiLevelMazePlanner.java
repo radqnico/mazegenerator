@@ -27,8 +27,8 @@ public class MultiLevelMazePlanner {
                                   int additionalExits, double holeProbability,
                                   boolean hasRoom, int roomHeight, int roomWidth,
                                   boolean hasExits, boolean sharedGrid) {
-        this.sizeN = SizeParser.ensureOdd(sizeN);
-        this.sizeM = SizeParser.ensureOdd(sizeM);
+        this.sizeN = SizeParser.interiorToGridSize(Math.max(1, sizeN));
+        this.sizeM = SizeParser.interiorToGridSize(Math.max(1, sizeM));
         this.layers = Math.max(1, layers);
         this.stairs = Math.max(1, stairs);
         this.additionalExits = additionalExits;

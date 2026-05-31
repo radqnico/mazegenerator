@@ -81,8 +81,8 @@ public class MazeStreamPlacer implements JobProducer {
         this.cellSize = cellSize;
         this.closed = closed;
         this.hollow = isHollow;
-        this.sizeN = SizeParser.ensureOdd(sizeN);
-        this.sizeM = SizeParser.ensureOdd(sizeM);
+        this.sizeN = SizeParser.interiorToGridSize(Math.max(1, sizeN));
+        this.sizeM = SizeParser.interiorToGridSize(Math.max(1, sizeM));
         this.additionalExits = additionalExits;
         this.erosion = erosion;
         this.hasRoom = hasRoom;

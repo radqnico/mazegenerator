@@ -47,8 +47,10 @@ public class IncrementalMazeGenerator {
                                     int roomHeight,
                                     int roomWidth,
                                     boolean hasExits) {
-        this.sizeN = SizeParser.ensureOdd(sizeN);
-        this.sizeM = SizeParser.ensureOdd(sizeM);
+        int requestedCellsN = Math.max(1, sizeN);
+        int requestedCellsM = Math.max(1, sizeM);
+        this.sizeN = SizeParser.interiorToGridSize(requestedCellsN);
+        this.sizeM = SizeParser.interiorToGridSize(requestedCellsM);
         this.holeProbability = Math.max(0.0, Math.min(1.0, holeProbability));
         this.hasRoom = hasRoom;
         this.roomHeight = Math.max(1, roomHeight);
