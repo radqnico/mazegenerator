@@ -418,28 +418,31 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         it.nicoloscialpi.mazegenerator.dialog.MazeOptions defaultOpts = it.nicoloscialpi.mazegenerator.dialog.MazeOptions.defaults();
         DialogHandler handler = DialogHandlerProvider.getHandler();
 
-        Location loc = p.getLocation();
-        MazeOptions opts = new MazeOptions();
-        opts.x = loc.getBlockX();
-        opts.y = loc.getBlockY();
-        opts.z = loc.getBlockZ();
-        opts.world = p.getWorld().getName();
-        opts.mazeSizeX = defaultOpts.mazeSizeX();
-        opts.mazeSizeZ = defaultOpts.mazeSizeZ();
-        opts.cellSize = defaultOpts.cellSize();
-        opts.wallHeight = defaultOpts.wallHeight();
-        opts.layers = defaultOpts.layers();
-        opts.stairs = defaultOpts.stairs();
-        opts.additionalExits = defaultOpts.additionalExits();
-        opts.erosion = defaultOpts.erosion();
-        opts.hasExits = defaultOpts.hasExits();
-        opts.hasRoom = defaultOpts.hasRoom();
-        opts.closed = defaultOpts.closed();
-        opts.hollow = defaultOpts.hollow();
-        opts.layDown = defaultOpts.layDown();
-        opts.themeName = defaultOpts.themeName();
+        it.nicoloscialpi.mazegenerator.dialog.MazeOptions opts = new it.nicoloscialpi.mazegenerator.dialog.MazeOptions(
+            defaultOpts.mazeSizeX(),
+            defaultOpts.mazeSizeZ(),
+            defaultOpts.cellSize(),
+            defaultOpts.wallHeight(),
+            defaultOpts.layers(),
+            defaultOpts.stairs(),
+            defaultOpts.additionalExits(),
+            defaultOpts.erosion(),
+            defaultOpts.hasExits(),
+            defaultOpts.hasRoom(),
+            defaultOpts.closed(),
+            defaultOpts.hollow(),
+            defaultOpts.layDown(),
+            defaultOpts.themeName()
+        );
 
         handler.sendDialog(p, opts, filled -> {
+            Location l = p.getLocation();
+            it.nicoloscialpi.mazegenerator.dialog.MazeOptions withLocation = new it.nicoloscialpi.mazegenerator.dialog.MazeOptions(
+                filled.mazeSizeX(), filled.mazeSizeZ(), filled.cellSize(), filled.wallHeight(),
+                filled.layers(), filled.stairs(), filled.additionalExits(), filled.erosion(),
+                filled.hasExits(), filled.hasRoom(), filled.closed(), filled.hollow(), filled.layDown(),
+                filled.themeName()
+            );
             p.sendMessage(Component.text("Maze configuration received!", NamedTextColor.GREEN));
         });
 

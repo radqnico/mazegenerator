@@ -2,6 +2,7 @@ package it.nicoloscialpi.mazegenerator.dialog;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
+import java.util.function.Consumer;
 
 public class NoOpDialogHandler implements DialogHandler {
     @Override
