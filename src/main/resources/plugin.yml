@@ -2,7 +2,7 @@ name: MazeGenerator
 prefix: MazeGenerator
 version: '${project.version}'
 main: it.nicoloscialpi.mazegenerator.MazeGeneratorPlugin
-api-version: '26.1'
+api-version: '${paper.api-version}'
 
 
 commands:

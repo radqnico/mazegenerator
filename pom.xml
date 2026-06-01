@@ -15,11 +15,13 @@
         <java.version>21</java.version>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <paper.api.version>26.1.2.build.66-stable</paper.api.version>
+        <paper.api-version>26.1</paper.api-version>
+        <output.suffix>26.1.2</output.suffix>
     </properties>
 
     <build>
         <defaultGoal>clean package</defaultGoal>
-        <sourceLocation>src/main/java</sourceLocation>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -37,27 +39,21 @@
                     <useModulePath>false</useModulePath>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.5.3</version>
                 <executions>
                     <execution>
-                        <id>paper-26.1.2</id>
+                        <id>shade</id>
                         <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <outputFileName>${project.artifactId}-${project.version}-26.1.2.jar</outputFileName>
-                            <sources>
-                                <source>
-                                    <location>src/main/java</location>
-                                </source>
-                                <source>
-                                    <location>src/main/java-paper-26</location>
-                                </source>
-                            </sources>
+                            <finalName>${project.artifactId}-${project.version}-${output.suffix}</finalName>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <relocations>
                                 <relocation>
                                     <pattern>com.jeff_media.customblockdata</pattern>
@@ -113,13 +109,16 @@
         <profile>
             <id>paper-26.1.2</id>
             <properties>
-                <paper.mc.version>1.21.4</paper.mc.version>
+                <output.suffix>26.1.2</output.suffix>
+                <paper.api.version>26.1.2.build.66-stable</paper.api.version>
+                <paper.api-version>26.1</paper.api-version>
+                <maven.compiler.release>25</maven.compiler.release>
             </properties>
             <dependencies>
                 <dependency>
                     <groupId>io.papermc.paper</groupId>
                     <artifactId>paper-api</artifactId>
-                    <version>${paper.mc.version}-R0.1-SNAPSHOT</version>
+                    <version>${paper.api.version}</version>
                     <scope>provided</scope>
                 </dependency>
             </dependencies>
@@ -127,48 +126,18 @@
         <profile>
             <id>paper-1.21.11</id>
             <properties>
-                <paper.mc.version>1.21.4</paper.mc.version>
+                <output.suffix>1.21.11</output.suffix>
+                <paper.api.version>1.21.11-R0.1-SNAPSHOT</paper.api.version>
+                <paper.api-version>1.21</paper.api-version>
             </properties>
             <dependencies>
                 <dependency>
                     <groupId>io.papermc.paper</groupId>
                     <artifactId>paper-api</artifactId>
-                    <version>${paper.mc.version}-R0.1-SNAPSHOT</version>
+                    <version>${paper.api.version}</version>
                     <scope>provided</scope>
                 </dependency>
             </dependencies>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-shade-plugin</artifactId>
-                        <version>3.5.3</version>
-                        <executions>
-                            <execution>
-                                <id>paper-1.21.11</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>shade</goal>
-                                </goals>
-                                <configuration>
-                                    <outputFileName>${project.artifactId}-${project.version}-1.21.11.jar</outputFileName>
-                                    <sources>
-                                        <source>
-                                            <location>src/main/java</location>
-                                        </source>
-                                    </sources>
-                                    <relocations>
-                                        <relocation>
-                                            <pattern>com.jeff_media.customblockdata</pattern>
-                                            <shadedPattern>it.nicoloscialpi.mazegenerator.shaded.customblockdata</shadedPattern>
-                                        </relocation>
-                                    </relocations>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
     </profiles>
 </project>
