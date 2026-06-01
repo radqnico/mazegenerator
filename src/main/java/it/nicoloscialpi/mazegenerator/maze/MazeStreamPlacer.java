@@ -44,8 +44,7 @@ public class MazeStreamPlacer implements JobProducer {
     private final boolean hasExits;
     private final int[][] cellHeights;
     private final boolean layDown;
-
-    private final boolean deferWallFill = MazeGeneratorPlugin.plugin.getConfig().getBoolean("defer-wall-fill", false);
+    private final boolean deferWallFill;
     private final long pendingMemoryBudgetBytes;
     private final SpillStorage spillStorage;
     private final long totalCells;
@@ -62,8 +61,8 @@ public class MazeStreamPlacer implements JobProducer {
                             int cellSize,
                             boolean closed,
                             boolean isHollow,
-                            int sizeN,
-                            int sizeM,
+                            int requestedCellsN,
+                            int requestedCellsM,
                             int additionalExits,
                             double erosion,
                             boolean hasRoom,
@@ -81,8 +80,6 @@ public class MazeStreamPlacer implements JobProducer {
         this.cellSize = cellSize;
         this.closed = closed;
         this.hollow = isHollow;
-        this.sizeN = SizeParser.interiorToGridSize(Math.max(1, sizeN));
-        this.sizeM = SizeParser.interiorToGridSize(Math.max(1, sizeM));
         this.additionalExits = additionalExits;
         this.erosion = erosion;
         this.hasRoom = hasRoom;
@@ -90,6 +87,13 @@ public class MazeStreamPlacer implements JobProducer {
         this.roomSizeZ = roomSizeZ;
         this.hasExits = hasExits;
         this.layDown = layDown;
+        this.deferWallFill = MazeGeneratorPlugin.plugin.getConfig().getBoolean("defer-wall-fill", false);
+
+        this.generator = new IncrementalMazeGenerator(
+                Math.max(1, requestedCellsN), Math.max(1, requestedCellsM),
+                additionalExits, erosion, hasRoom, roomSizeX, roomSizeZ, hasExits);
+        this.sizeN = generator.getGridSizeN();
+        this.sizeM = generator.getGridSizeM();
         this.pendingMemoryBudgetBytes = SizeParser.parseToBytes(
                 MazeGeneratorPlugin.plugin.getConfig().getString("placement-max-pending", "8M"),
                 8L * 1024L * 1024L
@@ -110,9 +114,6 @@ public class MazeStreamPlacer implements JobProducer {
         } else {
             this.cellHeights = null;
         }
-
-        this.generator = new IncrementalMazeGenerator(this.sizeN, this.sizeM,
-                additionalExits, erosion, hasRoom, roomSizeX, roomSizeZ, hasExits);
     }
 
     @Override

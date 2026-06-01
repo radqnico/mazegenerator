@@ -415,35 +415,39 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        it.nicoloscialpi.mazegenerator.dialog.MazeOptions defaultOpts = it.nicoloscialpi.mazegenerator.dialog.MazeOptions.defaults();
+        it.nicoloscialpi.mazegenerator.dialog.MazeOptions opts = it.nicoloscialpi.mazegenerator.dialog.MazeOptions.defaults();
         DialogHandler handler = DialogHandlerProvider.getHandler();
 
-        it.nicoloscialpi.mazegenerator.dialog.MazeOptions opts = new it.nicoloscialpi.mazegenerator.dialog.MazeOptions(
-            defaultOpts.mazeSizeX(),
-            defaultOpts.mazeSizeZ(),
-            defaultOpts.cellSize(),
-            defaultOpts.wallHeight(),
-            defaultOpts.layers(),
-            defaultOpts.stairs(),
-            defaultOpts.additionalExits(),
-            defaultOpts.erosion(),
-            defaultOpts.hasExits(),
-            defaultOpts.hasRoom(),
-            defaultOpts.closed(),
-            defaultOpts.hollow(),
-            defaultOpts.layDown(),
-            defaultOpts.themeName()
-        );
-
         handler.sendDialog(p, opts, filled -> {
-            Location l = p.getLocation();
-            it.nicoloscialpi.mazegenerator.dialog.MazeOptions withLocation = new it.nicoloscialpi.mazegenerator.dialog.MazeOptions(
-                filled.mazeSizeX(), filled.mazeSizeZ(), filled.cellSize(), filled.wallHeight(),
-                filled.layers(), filled.stairs(), filled.additionalExits(), filled.erosion(),
-                filled.hasExits(), filled.hasRoom(), filled.closed(), filled.hollow(), filled.layDown(),
-                filled.themeName()
-            );
-            p.sendMessage(Component.text("Maze configuration received!", NamedTextColor.GREEN));
+            MazeOptions cmdOpt = new MazeOptions();
+            Location loc = p.getLocation();
+            cmdOpt.x = loc.getBlockX();
+            cmdOpt.y = loc.getBlockY();
+            cmdOpt.z = loc.getBlockZ();
+            cmdOpt.world = p.getWorld().getName();
+            cmdOpt.mazeSizeX = filled.mazeSizeX();
+            cmdOpt.mazeSizeZ = filled.mazeSizeZ();
+            cmdOpt.cellSize = filled.cellSize();
+            cmdOpt.wallHeight = filled.wallHeight();
+            cmdOpt.layers = filled.layers();
+            cmdOpt.stairs = filled.stairs();
+            cmdOpt.additionalExits = filled.additionalExits();
+            cmdOpt.erosion = filled.erosion();
+            cmdOpt.hasExits = filled.hasExits();
+            cmdOpt.hasRoom = filled.hasRoom();
+            cmdOpt.closed = filled.closed();
+            cmdOpt.hollow = filled.hollow();
+            cmdOpt.layDown = filled.layDown();
+            cmdOpt.themeName = filled.themeName().toLowerCase(Locale.ROOT);
+
+            Optional<String> err = validate(cmdOpt, sender);
+            if (err.isPresent()) {
+                p.sendMessage(Component.text("Invalid configuration: " + err.get(), NamedTextColor.RED));
+                return;
+            }
+            Theme theme = Themes.getTheme(cmdOpt.themeName);
+            Location origin = new Location(p.getWorld(), cmdOpt.x, cmdOpt.y, cmdOpt.z);
+            startBuild(sender, cmdOpt, theme, origin);
         });
 
         return true;

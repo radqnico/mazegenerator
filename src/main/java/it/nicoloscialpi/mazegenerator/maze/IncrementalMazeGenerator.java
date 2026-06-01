@@ -77,6 +77,9 @@ public class IncrementalMazeGenerator {
 
     public long getEmittedCount() { return emittedCount; }
 
+    public int getGridSizeN() { return sizeN; }
+    public int getGridSizeM() { return sizeM; }
+
     public boolean isComplete() {
         return stack.isEmpty() && outbox.isEmpty();
     }
