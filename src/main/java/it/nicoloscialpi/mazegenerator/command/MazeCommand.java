@@ -41,7 +41,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
     );
 
     private final JavaPlugin plugin;
-    private static final Map<UUID, PendingBuild> PENDING = new HashMap<>();
+    private static final Map<UUID, PendingBuild> PENDING = Collections.synchronizedMap(new HashMap<>());
 
     public MazeCommand(JavaPlugin plugin) { this.plugin = plugin; }
 
@@ -159,7 +159,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     opt.hasExits, opt.layDown
             );
             MultiLevelMazePlanner.MultiLevelPlan plan = planner.generatePlan();
-            boolean setBlockData = MazeGeneratorPlugin.plugin.getConfig().getBoolean("set-block-data", false);
+            boolean setBlockData = MazeGeneratorPlugin.getInstance().getConfig().getBoolean("set-block-data", false);
             MultiLevelMazeStreamPlacer streamPlacer = new MultiLevelMazeStreamPlacer(
                     theme, origin, opt.wallHeight, opt.cellSize,
                     opt.closed, opt.hollow, plan, setBlockData
@@ -262,7 +262,9 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     break;
                 case "themename":
                     if (Themes.getThemes() != null) {
-                        Themes.getThemes().keySet().forEach(t -> suggestions.add(displayKey + ":" + t));
+                        Themes.getThemes().keySet().stream()
+                                .filter(t -> valueQuery.isEmpty() || t.toLowerCase(Locale.ROOT).contains(valueQuery))
+                                .forEach(t -> suggestions.add(displayKey + ":" + t));
                     }
                     break;
                 case "hasexits":
@@ -465,6 +467,13 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         try {
             Theme theme = Themes.getTheme(opt.themeName);
             Location origin = new Location(sender.getServer().getWorld(opt.world), opt.x, opt.y, opt.z);
+            
+            // Validate terrain for layDown mode
+            if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
+                sender.sendMessage("Cannot lay down maze here (no valid ground).");
+                return true;
+            }
+            
             if (!(sender instanceof Player p)) {
                 boolean hasCoords = hasCoordArgs(args);
                 if (!hasCoords) {
@@ -472,10 +481,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 // Console: no preview/confirm, build immediately
-                if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
-                    sender.sendMessage("Cannot lay down maze here (no valid ground).");
-                    return true;
-                }
                 startBuild(sender, opt, theme, origin);
                 return true;
             }
@@ -483,10 +488,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             boolean requestConfirm = plugin.getConfig().getBoolean("request-confirm", true);
             if (!requestConfirm) {
                 MazePreviewer.stopPreview(p);
-                if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
-                    sender.sendMessage("Cannot lay down maze here (no valid ground).");
-                    return true;
-                }
                 startBuild(sender, opt, theme, origin);
                 sender.sendMessage(MessageFileReader.getMessage("build-no-preview"));
                 return true;
@@ -494,10 +495,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
 
             PENDING.remove(p.getUniqueId());
             MazePreviewer.stopPreview(p);
-            if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
-                sender.sendMessage("Cannot lay down maze here (no valid ground).");
-                return true;
-            }
             PendingBuild pending = new PendingBuild(opt, theme, origin);
             PENDING.put(p.getUniqueId(), pending);
             MazePreviewer.showPreview(plugin, p, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight, opt.layDown);

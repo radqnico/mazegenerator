@@ -289,8 +289,10 @@ public class MultiLevelMazePlanner {
                 boolean isWallA = gridA[r][c] == MazeCellType.WALL;
                 boolean isWallB = gridB[r][c] == MazeCellType.WALL;
 
+                // At least one grid has a wall at this position
                 if (!isWallA && !isWallB) continue;
 
+                // Check if this position has adjacent corridors in either grid
                 if (hasAdjacentCorridor(gridA, r, c) || hasAdjacentCorridor(gridB, r, c)) {
                     wallCandidates.add(new IntPair(r, c));
                 }
@@ -300,14 +302,32 @@ public class MultiLevelMazePlanner {
         Collections.shuffle(wallCandidates, random);
 
         for (IntPair p : wallCandidates) {
-            if (gridA[p.r][p.c] == MazeCellType.WALL) {
+            boolean wasWallA = gridA[p.r][p.c] == MazeCellType.WALL;
+            boolean wasWallB = gridB[p.r][p.c] == MazeCellType.WALL;
+            
+            if (wasWallA) {
                 gridA[p.r][p.c] = MazeCellType.HOLE;
             }
-            if (gridB[p.r][p.c] == MazeCellType.WALL) {
+            if (wasWallB) {
                 gridB[p.r][p.c] = MazeCellType.HOLE;
             }
-            if (gridA[p.r][p.c] == MazeCellType.HOLE || gridB[p.r][p.c] == MazeCellType.HOLE) {
+            // Success if at least one hole was created
+            if (wasWallA || wasWallB) {
                 return;
+            }
+        }
+        
+        // Fallback: try any wall cell
+        for (int r = 1; r < sizeN - 1; r++) {
+            for (int c = 1; c < sizeM - 1; c++) {
+                if (gridA[r][c] == MazeCellType.WALL) {
+                    gridA[r][c] = MazeCellType.HOLE;
+                    return;
+                }
+                if (gridB[r][c] == MazeCellType.WALL) {
+                    gridB[r][c] = MazeCellType.HOLE;
+                    return;
+                }
             }
         }
     }

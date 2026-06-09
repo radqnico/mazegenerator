@@ -24,7 +24,7 @@ private final HashMap<Material, Integer> floorMaterialWeight;
         ladderMaterialWeight = new HashMap<>();
     }
 
-    private static final java.util.Random RNG = new java.util.Random();
+    private static final ThreadLocal<java.util.Random> RNG = ThreadLocal.withInitial(java.util.Random::new);
 
     private void buildPicker(HashMap<Material, Integer> map, Picker p) {
         if (map.isEmpty()) { p.materials = null; p.cum = null; p.total = 0; return; }
@@ -42,9 +42,13 @@ private final HashMap<Material, Integer> floorMaterialWeight;
         p.materials = mats; p.cum = cum; p.total = running;
     }
 
-    private Material pick(Picker p) {
-        if (p.total <= 0 || p.materials == null) return Material.STONE;
-        int r = RNG.nextInt(p.total);
+    private Material pick(Picker p, String fallbackContext) {
+        if (p.total <= 0 || p.materials == null) {
+            System.getLogger("MazeGenerator").log(System.Logger.Level.WARNING, 
+                "No materials configured for " + fallbackContext + ", falling back to STONE");
+            return Material.STONE;
+        }
+        int r = RNG.get().nextInt(p.total);
         int idx = java.util.Arrays.binarySearch(p.cum, r + 1);
         if (idx < 0) idx = -idx - 1;
         if (idx < 0) idx = 0; if (idx >= p.materials.length) idx = p.materials.length - 1;
@@ -58,10 +62,10 @@ private final HashMap<Material, Integer> floorMaterialWeight;
     private final Picker topPicker = new Picker();
     private final Picker ladderPicker = new Picker();
 
-    public Material getRandomFloorMaterial() { if (floorDirty) { buildPicker(floorMaterialWeight, floorPicker); floorDirty = false; } return pick(floorPicker); }
-    public Material getRandomWallMaterial() { if (wallDirty) { buildPicker(wallMaterialWeight, wallPicker); wallDirty = false; } return pick(wallPicker); }
-    public Material getRandomTopMaterial() { if (topDirty) { buildPicker(topMaterialWeight, topPicker); topDirty = false; } return pick(topPicker); }
-    public Material getRandomLadderMaterial() { if (ladderDirty) { buildPicker(ladderMaterialWeight, ladderPicker); ladderDirty = false; } return pick(ladderPicker); }
+    public Material getRandomFloorMaterial() { if (floorDirty) { buildPicker(floorMaterialWeight, floorPicker); floorDirty = false; } return pick(floorPicker, "floor"); }
+    public Material getRandomWallMaterial() { if (wallDirty) { buildPicker(wallMaterialWeight, wallPicker); wallDirty = false; } return pick(wallPicker, "wall"); }
+    public Material getRandomTopMaterial() { if (topDirty) { buildPicker(topMaterialWeight, topPicker); topDirty = false; } return pick(topPicker, "top"); }
+    public Material getRandomLadderMaterial() { if (ladderDirty) { buildPicker(ladderMaterialWeight, ladderPicker); ladderDirty = false; } return pick(ladderPicker, "ladder"); }
 
     public void addFloorMaterialWeight(Material material, int weight) { floorMaterialWeight.put(material, weight); floorDirty = true; }
     public void addWallMaterialWeight(Material material, int weight) { wallMaterialWeight.put(material, weight); wallDirty = true; }

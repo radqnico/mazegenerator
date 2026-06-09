@@ -11,7 +11,7 @@ public class MazeGenerator {
     public static final byte HOLE = MazeCellType.HOLE;
     public static final byte ROOM = MazeCellType.ROOM;
 
-    private static long lastGenerationMillis = 0;
+    private static volatile long lastGenerationMillis = 0;
 
     public static long getLastGenerationMillis() {
         return lastGenerationMillis;

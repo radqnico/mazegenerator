@@ -12,11 +12,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import net.kyori.adventure.text.Component;
 
-import java.util.ArrayDeque;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Semaphore;
-import java.util.Collections;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LoadBalancer extends BukkitRunnable {
@@ -76,7 +73,7 @@ public class LoadBalancer extends BukkitRunnable {
     }
 
     // Active tasks tracking to allow /maze stop
-    private static final Set<LoadBalancer> ACTIVE = Collections.newSetFromMap(new ConcurrentHashMap<LoadBalancer, Boolean>());
+    private static final Set<LoadBalancer> ACTIVE = Collections.synchronizedSet(new HashSet<>());
 
     public synchronized boolean isDone() {
         return isDone;
@@ -129,7 +126,7 @@ public class LoadBalancer extends BukkitRunnable {
                 long spareNanos = TARGET_TICK_NANOS - sinceTickStartNanos;
                 if (spareNanosAvg == 0) {
                     spareNanosAvg = spareNanos;
-                } else {
+                } else if (spareNanos > 0) {
                     spareNanosAvg = spareNanosAvg * 0.7 + spareNanos * 0.3; // smooth jitter
                 }
                 double spareMillis = spareNanosAvg / 1_000_000.0;

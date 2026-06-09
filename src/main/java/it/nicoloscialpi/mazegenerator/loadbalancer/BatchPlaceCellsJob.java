@@ -181,8 +181,8 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
             block.setType(material, false);
         }
         if (setBlockData) {
-            CustomBlockData data = new CustomBlockData(block, MazeGeneratorPlugin.plugin);
-            NamespacedKey key = new NamespacedKey(MazeGeneratorPlugin.plugin, "block");
+            CustomBlockData data = new CustomBlockData(block, MazeGeneratorPlugin.getInstance());
+            NamespacedKey key = new NamespacedKey(MazeGeneratorPlugin.getInstance(), "block");
             data.set(key, PersistentDataType.STRING, "BLOCK");
         }
     }

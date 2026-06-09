@@ -81,7 +81,7 @@ public class IncrementalMazeGenerator {
     public int getGridSizeM() { return sizeM; }
 
     public boolean isComplete() {
-        return stack.isEmpty() && outbox.isEmpty();
+        return stack.isEmpty() && outbox.isEmpty() && exitsPlaced >= exitsToPlace;
     }
 
     public List<Cell> pollNextCells(int max) {
@@ -128,6 +128,18 @@ public class IncrementalMazeGenerator {
                 emittedCount++;
             }
         }
+        
+        // If stack is empty but we still need to place exits, do it now
+        if (stack.isEmpty() && exitsPlaced < exitsToPlace && hasExits) {
+            placeRemainingExits();
+            // Drain any newly added exits from outbox
+            while (!outbox.isEmpty() && result.size() < max) {
+                Cell out = outbox.poll();
+                result.add(out);
+                emittedCount++;
+            }
+        }
+        
         return result;
     }
 
@@ -156,6 +168,36 @@ public class IncrementalMazeGenerator {
             if (!isVisited(br, bc)) {
                 pushPath(br, bc, EXIT);
                 exitsPlaced++;
+            }
+        }
+    }
+
+    private void placeRemainingExits() {
+        if (!hasExits || exitsPlaced >= exitsToPlace) return;
+        
+        // Collect all valid exit positions on the border
+        List<int[]> exitPositions = new ArrayList<>();
+        for (int j = 1; j < sizeM - 1; j++) {
+            if (isVisited(1, j)) exitPositions.add(new int[]{0, j, 1, 0});
+            if (isVisited(sizeN - 2, j)) exitPositions.add(new int[]{sizeN - 1, j, -1, 0});
+        }
+        for (int i = 1; i < sizeN - 1; i++) {
+            if (isVisited(i, 1)) exitPositions.add(new int[]{i, 0, 0, 1});
+            if (isVisited(i, sizeM - 2)) exitPositions.add(new int[]{i, sizeM - 1, 0, -1});
+        }
+        
+        Collections.shuffle(exitPositions, random);
+        for (int[] exit : exitPositions) {
+            if (exitsPlaced >= exitsToPlace) break;
+            if (!emitted.get(exit[0] * sizeM + exit[1])) {
+                pushPath(exit[0], exit[1], EXIT);
+                exitsPlaced++;
+            }
+            int innerR = exit[0] + exit[2];
+            int innerC = exit[1] + exit[3];
+            if (exitsPlaced >= exitsToPlace) break;
+            if (!emitted.get(innerR * sizeM + innerC)) {
+                pushPath(innerR, innerC, PATH);
             }
         }
     }
