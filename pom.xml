@@ -6,7 +6,7 @@
 
     <groupId>it.nicoloscialpi</groupId>
     <artifactId>MazeGenerator</artifactId>
-    <version>1.8.1</version>
+    <version>2.2</version>
     <packaging>jar</packaging>
 
     <name>MazeGenerator</name>
@@ -15,6 +15,9 @@
         <java.version>21</java.version>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <paper.api.version>26.1.2.build.66-stable</paper.api.version>
+        <paper.api-version>26.1</paper.api-version>
+        <output.suffix>26.1.2</output.suffix>
     </properties>
 
     <build>
@@ -36,17 +39,21 @@
                     <useModulePath>false</useModulePath>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.3</version>
+                <version>3.6.0</version>
                 <executions>
                     <execution>
+                        <id>shade</id>
                         <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <finalName>${project.artifactId}-${project.version}-${output.suffix}</finalName>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <relocations>
                                 <relocation>
                                     <pattern>com.jeff_media.customblockdata</pattern>
@@ -72,27 +79,16 @@
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
         <repository>
-            <id>leafmc</id>
-            <url>https://maven.leafmc.one/snapshots/</url>
-        </repository>
-        <repository>
             <id>sonatype</id>
             <url>https://oss.sonatype.org/content/groups/public/</url>
         </repository>
     </repositories>
 
-
     <dependencies>
         <dependency>
-            <groupId>cn.dreeam.leaf</groupId>
-            <artifactId>leaf-api</artifactId>
-            <version>1.21.11-R0.1-SNAPSHOT</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.papermc.paper</groupId>
-            <artifactId>paper-api</artifactId>
-            <version>1.21.10-R0.1-SNAPSHOT</version>
+            <groupId>net.kyori</groupId>
+            <artifactId>adventure-api</artifactId>
+            <version>5.1.1</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -108,4 +104,40 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>paper-26.1.2</id>
+            <properties>
+                <output.suffix>26.1.2</output.suffix>
+                <paper.api.version>26.1.2.build.66-stable</paper.api.version>
+                <paper.api-version>26.1</paper.api-version>
+                <maven.compiler.release>21</maven.compiler.release>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>io.papermc.paper</groupId>
+                    <artifactId>paper-api</artifactId>
+                    <version>${paper.api.version}</version>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>paper-1.21.11</id>
+            <properties>
+                <output.suffix>1.21.11</output.suffix>
+                <paper.api.version>1.21.11-R0.1-SNAPSHOT</paper.api.version>
+                <paper.api-version>1.21</paper.api-version>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>io.papermc.paper</groupId>
+                    <artifactId>paper-api</artifactId>
+                    <version>${paper.api.version}</version>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

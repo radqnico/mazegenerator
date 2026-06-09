@@ -8,6 +8,10 @@ public final class SizeParser {
         return (value % 2 == 0) ? value + 1 : value;
     }
 
+    public static int interiorToGridSize(int interiorCells) {
+        return ensureOdd(interiorCells * 2 + 1);
+    }
+
     public static long parseToBytes(String raw, long defaultValue) {
         if (raw == null || raw.isBlank()) {
             return defaultValue;

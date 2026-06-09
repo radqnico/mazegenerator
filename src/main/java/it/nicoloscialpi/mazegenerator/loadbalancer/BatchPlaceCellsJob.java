@@ -9,11 +9,8 @@ import org.bukkit.block.Block;
 import org.bukkit.persistence.PersistentDataType;
 import com.jeff_media.customblockdata.CustomBlockData;
 
-import static it.nicoloscialpi.mazegenerator.maze.MazeCellType.WALL;
+import static it.nicoloscialpi.mazegenerator.maze.MazeCellType.*;
 
-/**
- * Places multiple cells within the same chunk in a single job to reduce scheduling overhead.
- */
 public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
 
     private final World world;
@@ -26,7 +23,6 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
     private final boolean hollow;
     private final boolean setBlockData;
 
-    // Packed cells: [worldX, worldY, worldZ, type]
     private final int[][] cells;
 
     public BatchPlaceCellsJob(World world,
@@ -64,19 +60,54 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
     }
 
     private void placeCell(int worldX, int worldY, int worldZ, byte type) {
-        // Floor (full fill)
+        if (type == STAIR_UP) {
+            placeStairUp(worldX, worldY, worldZ);
+        } else if (type == STAIR_DOWN) {
+            placeStairDown(worldX, worldY, worldZ);
+        } else {
+            placeNormalCell(worldX, worldY, worldZ, type);
+        }
+    }
+
+    private void placeStairUp(int worldX, int worldY, int worldZ) {
         for (int x = 0; x < cellSize; x++) {
             for (int z = 0; z < cellSize; z++) {
-                Material material = theme.getRandomFloorMaterial();
+                Material floorMat = theme.getRandomFloorMaterial();
+                setBlock(worldX + x, worldY + 0, worldZ + z, floorMat);
+            }
+        }
+
+        for (int y = 1; y < height; y++) {
+            for (int x = 0; x < cellSize; x++) {
+                for (int z = 0; z < cellSize; z++) {
+                    setBlock(worldX + x, worldY + y, worldZ + z, Material.AIR);
+                }
+            }
+        }
+    }
+
+    private void placeStairDown(int worldX, int worldY, int worldZ) {
+        for (int y = 1; y < height; y++) {
+            for (int x = 0; x < cellSize; x++) {
+                for (int z = 0; z < cellSize; z++) {
+                    setBlock(worldX + x, worldY + y, worldZ + z, Material.AIR);
+                }
+            }
+        }
+    }
+
+    private void placeNormalCell(int worldX, int worldY, int worldZ, byte type) {
+        boolean isHole = (type == HOLE);
+        for (int x = 0; x < cellSize; x++) {
+            for (int z = 0; z < cellSize; z++) {
+                Material material = isHole ? Material.AIR : theme.getRandomFloorMaterial();
                 setBlock(worldX + x, worldY + 0, worldZ + z, material);
             }
         }
 
-        // Middle layers
         for (int y = 1; y < height; y++) {
             if (type == WALL) {
                 if (hollow) {
-                    // Perimeter only
                     for (int x = 0; x < cellSize; x++) {
                         Material m1 = theme.getRandomWallMaterial();
                         setBlock(worldX + x, worldY + y, worldZ + 0, m1);
@@ -98,7 +129,6 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
                     }
                 }
             } else {
-                // Clear space
                 for (int x = 0; x < cellSize; x++) {
                     for (int z = 0; z < cellSize; z++) {
                         setBlock(worldX + x, worldY + y, worldZ + z, Material.AIR);
@@ -107,9 +137,12 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
             }
         }
 
-        // Top layer at y=height
         int yTop = height;
-        if (closed || type == WALL) {
+        boolean ceilingForCell = (closed || type == WALL);
+        if (type == HOLE) {
+            ceilingForCell = !ceilingForCell;
+        }
+        if (ceilingForCell) {
             if (hollow) {
                 for (int x = 0; x < cellSize; x++) {
                     Material m1 = theme.getRandomTopMaterial();
@@ -132,7 +165,6 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
                 }
             }
         } else {
-            // Open top for paths
             for (int x = 0; x < cellSize; x++) {
                 for (int z = 0; z < cellSize; z++) {
                     setBlock(worldX + x, worldY + yTop, worldZ + z, Material.AIR);
@@ -149,11 +181,10 @@ public class BatchPlaceCellsJob implements LoadBalancerJob, ChunkAwareJob {
             block.setType(material, false);
         }
         if (setBlockData) {
-            CustomBlockData data = new CustomBlockData(block, MazeGeneratorPlugin.plugin);
-            NamespacedKey key = new NamespacedKey(MazeGeneratorPlugin.plugin, "block");
+            CustomBlockData data = new CustomBlockData(block, MazeGeneratorPlugin.getInstance());
+            NamespacedKey key = new NamespacedKey(MazeGeneratorPlugin.getInstance(), "block");
             data.set(key, PersistentDataType.STRING, "BLOCK");
         }
     }
 
 }
-

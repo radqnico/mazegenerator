@@ -1,11 +1,19 @@
 package it.nicoloscialpi.mazegenerator.command;
 
+import it.nicoloscialpi.mazegenerator.MazeGeneratorPlugin;
 import it.nicoloscialpi.mazegenerator.MessageFileReader;
+import it.nicoloscialpi.mazegenerator.dialog.DialogHandler;
+import it.nicoloscialpi.mazegenerator.dialog.DialogHandlerProvider;
 import it.nicoloscialpi.mazegenerator.loadbalancer.LoadBalancer;
+import it.nicoloscialpi.mazegenerator.maze.MultiLevelMazePlanner;
+import it.nicoloscialpi.mazegenerator.maze.MultiLevelMazeStreamPlacer;
 import it.nicoloscialpi.mazegenerator.maze.MazeStreamPlacer;
 import it.nicoloscialpi.mazegenerator.themes.Theme;
 import it.nicoloscialpi.mazegenerator.themes.ThemeConfigurationReader;
 import it.nicoloscialpi.mazegenerator.themes.Themes;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -25,14 +33,15 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             "cellSize","wallHeight",
             "hasExits","additionalExits",
             "hasRoom","roomSizeX","roomSizeZ",
-            "erosion","closed","hollow","themeName","layDown"
+            "erosion","closed","hollow","themeName","layDown",
+            "layers","stairs"
     );
     private static final List<String> SUBCOMMANDS = Arrays.asList(
-            "stop", "confirm", "cancel", "status", "help", "reload"
+            "stop", "confirm", "cancel", "status", "help", "reload", "dialog"
     );
 
     private final JavaPlugin plugin;
-    private static final Map<UUID, PendingBuild> PENDING = new HashMap<>();
+    private static final Map<UUID, PendingBuild> PENDING = Collections.synchronizedMap(new HashMap<>());
 
     public MazeCommand(JavaPlugin plugin) { this.plugin = plugin; }
 
@@ -46,6 +55,7 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         double erosion = 0.0; boolean closed = false; boolean hollow = false;
         String themeName = "desert";
         boolean layDown = false;
+        int layers = 1, stairs = 1;
     }
 
     private MazeOptions parseOptions(CommandSender sender, String[] args) {
@@ -76,6 +86,8 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         p.getBool("closed").ifPresent(v -> opt.closed = v);
         p.getBool("hollow").ifPresent(v -> opt.hollow = v);
         p.getBool("layDown").ifPresent(v -> opt.layDown = v);
+        p.getInt("layers").ifPresent(v -> opt.layers = v);
+        p.getInt("stairs").ifPresent(v -> opt.stairs = v);
         return opt;
     }
 
@@ -85,12 +97,15 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         if (o.mazeSizeX < 1 || o.mazeSizeZ < 1) return Optional.of("Invalid maze size");
         if (o.cellSize < 1 || o.wallHeight < 1) return Optional.of("Invalid cellSize/wallHeight");
         if (o.erosion < 0.0 || o.erosion > 1.0) return Optional.of("Erosion must be in [0,1]");
+        if (o.layers < 1) return Optional.of("Invalid layers (must be >= 1)");
+        if (o.stairs < 1) return Optional.of("Invalid stairs (must be >= 1)");
         World w = sender.getServer().getWorld(o.world);
         if (w == null) return Optional.of("World not found: " + o.world);
         int minY = w.getMinHeight();
         int maxY = w.getMaxHeight() - 1;
-        if (o.y < minY || (o.y + o.wallHeight) > maxY) {
-            int maxBaseY = maxY - o.wallHeight;
+        int totalHeight = o.layers * (o.wallHeight + 1);
+        if (o.y < minY || (o.y + totalHeight) > maxY) {
+            int maxBaseY = maxY - totalHeight;
             return Optional.of("Y is out of build range for this world (allowed " + minY + ".." + maxBaseY + ")");
         }
         if (Themes.getThemes() == null || !Themes.getThemes().containsKey(o.themeName)) {
@@ -106,24 +121,26 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length > 0) {
-            String sub = args[0].toLowerCase(Locale.ROOT);
-            switch (sub) {
-                case "stop":
-                    return handleStop(sender);
-                case "confirm":
-                    return handleConfirm(sender);
-                case "cancel":
-                    return handleCancel(sender);
-                case "status":
-                    return handleStatus(sender);
-                case "help":
-                    return handleHelp(sender);
-                case "reload":
-                    return handleReload(sender);
-                default:
-                    break;
-            }
+        if (args.length == 0) {
+            return handleDialog(sender);
+        }
+
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "stop":
+                return handleStop(sender);
+            case "confirm":
+                return handleConfirm(sender);
+            case "cancel":
+                return handleCancel(sender);
+            case "status":
+                return handleStatus(sender);
+            case "help":
+                return handleHelp(sender);
+            case "reload":
+                return handleReload(sender);
+            default:
+                break;
         }
 
         return handleGeneration(sender, args);
@@ -133,6 +150,25 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         if (sender instanceof Player p) {
             MazePreviewer.stopPreview(p);
         }
+
+        if (opt.layers > 1) {
+            MultiLevelMazePlanner planner = new MultiLevelMazePlanner(
+                    opt.mazeSizeX, opt.mazeSizeZ, opt.layers, opt.stairs,
+                    opt.additionalExits, opt.erosion,
+                    opt.hasRoom, opt.roomSizeX, opt.roomSizeZ,
+                    opt.hasExits, opt.layDown
+            );
+            MultiLevelMazePlanner.MultiLevelPlan plan = planner.generatePlan();
+            boolean setBlockData = MazeGeneratorPlugin.getInstance().getConfig().getBoolean("set-block-data", false);
+            MultiLevelMazeStreamPlacer streamPlacer = new MultiLevelMazeStreamPlacer(
+                    theme, origin, opt.wallHeight, opt.cellSize,
+                    opt.closed, opt.hollow, plan, setBlockData
+            );
+            LoadBalancer lb = new LoadBalancer(plugin, sender, streamPlacer);
+            lb.start();
+            return;
+        }
+
         MazeStreamPlacer streamPlacer = new MazeStreamPlacer(
                 theme,
                 origin,
@@ -168,12 +204,15 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 "  erosion              -> 0..1 occasional holes",
                 "  closed,hollow        -> roof over paths / shell walls",
                 "  themeName            -> theme from themes.yml",
+                "  layers,stairs        -> multi-level maze (e.g. layers:3 stairs:2)",
                 "",
                 "Examples:",
                 "  /maze mazeSizeX:51 mazeSizeZ:51 cellSize:2 wallHeight:4 themeName:forest",
                 "  /maze world:world_nether x:100 y:80 z:-200 mazeSizeX:41 mazeSizeZ:41 themeName:snowy",
+                "  /maze layers:3 stairs:2 mazeSizeX:25 mazeSizeZ:25 themeName:mountain",
                 "",
                 "Tips:",
+                "  - Multi-level mazes connect with ladders at matching corridor positions",
                 "  - First /maze shows a particle outline; /maze confirm to build, /maze cancel to discard",
                 "  - Use hollow:true and larger cellSize to reduce blocks",
                 "  - Tweak config.yml (millis-per-tick, jobs-batch-cells, max-blocks-per-job) to protect TPS",
@@ -223,7 +262,9 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     break;
                 case "themename":
                     if (Themes.getThemes() != null) {
-                        Themes.getThemes().keySet().forEach(t -> suggestions.add(displayKey + ":" + t));
+                        Themes.getThemes().keySet().stream()
+                                .filter(t -> valueQuery.isEmpty() || t.toLowerCase(Locale.ROOT).contains(valueQuery))
+                                .forEach(t -> suggestions.add(displayKey + ":" + t));
                     }
                     break;
                 case "hasexits":
@@ -240,6 +281,12 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                 case "wallheight":
                     suggestions.add(displayKey + ":3");
                     suggestions.add(displayKey + ":4");
+                    break;
+                case "layers":
+                case "stairs":
+                    suggestions.add(displayKey + ":1");
+                    suggestions.add(displayKey + ":2");
+                    suggestions.add(displayKey + ":3");
                     break;
                 default:
                     break;
@@ -360,6 +407,54 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleDialog(CommandSender sender) {
+        if (!(sender instanceof Player p)) {
+            sender.sendMessage("Dialogs are only available for players.");
+            return true;
+        }
+        if (!sender.hasPermission("mazegenerator.maze")) {
+            sender.sendMessage(MessageFileReader.getMessage("no-permission"));
+            return true;
+        }
+
+        it.nicoloscialpi.mazegenerator.dialog.MazeOptions opts = it.nicoloscialpi.mazegenerator.dialog.MazeOptions.defaults();
+        DialogHandler handler = DialogHandlerProvider.getHandler();
+
+        handler.sendDialog(p, opts, filled -> {
+            MazeOptions cmdOpt = new MazeOptions();
+            Location loc = p.getLocation();
+            cmdOpt.x = loc.getBlockX();
+            cmdOpt.y = loc.getBlockY();
+            cmdOpt.z = loc.getBlockZ();
+            cmdOpt.world = p.getWorld().getName();
+            cmdOpt.mazeSizeX = filled.mazeSizeX();
+            cmdOpt.mazeSizeZ = filled.mazeSizeZ();
+            cmdOpt.cellSize = filled.cellSize();
+            cmdOpt.wallHeight = filled.wallHeight();
+            cmdOpt.layers = filled.layers();
+            cmdOpt.stairs = filled.stairs();
+            cmdOpt.additionalExits = filled.additionalExits();
+            cmdOpt.erosion = filled.erosion();
+            cmdOpt.hasExits = filled.hasExits();
+            cmdOpt.hasRoom = filled.hasRoom();
+            cmdOpt.closed = filled.closed();
+            cmdOpt.hollow = filled.hollow();
+            cmdOpt.layDown = filled.layDown();
+            cmdOpt.themeName = filled.themeName().toLowerCase(Locale.ROOT);
+
+            Optional<String> err = validate(cmdOpt, sender);
+            if (err.isPresent()) {
+                p.sendMessage(Component.text("Invalid configuration: " + err.get(), NamedTextColor.RED));
+                return;
+            }
+            Theme theme = Themes.getTheme(cmdOpt.themeName);
+            Location origin = new Location(p.getWorld(), cmdOpt.x, cmdOpt.y, cmdOpt.z);
+            startBuild(sender, cmdOpt, theme, origin);
+        });
+
+        return true;
+    }
+
     private boolean handleGeneration(CommandSender sender, String[] args) {
         MazeOptions opt = parseOptions(sender, args);
         Optional<String> err = validate(opt, sender);
@@ -372,6 +467,13 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
         try {
             Theme theme = Themes.getTheme(opt.themeName);
             Location origin = new Location(sender.getServer().getWorld(opt.world), opt.x, opt.y, opt.z);
+            
+            // Validate terrain for layDown mode
+            if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
+                sender.sendMessage("Cannot lay down maze here (no valid ground).");
+                return true;
+            }
+            
             if (!(sender instanceof Player p)) {
                 boolean hasCoords = hasCoordArgs(args);
                 if (!hasCoords) {
@@ -379,10 +481,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 // Console: no preview/confirm, build immediately
-                if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
-                    sender.sendMessage("Cannot lay down maze here (no valid ground).");
-                    return true;
-                }
                 startBuild(sender, opt, theme, origin);
                 return true;
             }
@@ -390,10 +488,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
             boolean requestConfirm = plugin.getConfig().getBoolean("request-confirm", true);
             if (!requestConfirm) {
                 MazePreviewer.stopPreview(p);
-                if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
-                    sender.sendMessage("Cannot lay down maze here (no valid ground).");
-                    return true;
-                }
                 startBuild(sender, opt, theme, origin);
                 sender.sendMessage(MessageFileReader.getMessage("build-no-preview"));
                 return true;
@@ -401,10 +495,6 @@ public class MazeCommand implements CommandExecutor, TabCompleter {
 
             PENDING.remove(p.getUniqueId());
             MazePreviewer.stopPreview(p);
-            if (opt.layDown && !TerrainValidation.canLayDown(origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight)) {
-                sender.sendMessage("Cannot lay down maze here (no valid ground).");
-                return true;
-            }
             PendingBuild pending = new PendingBuild(opt, theme, origin);
             PENDING.put(p.getUniqueId(), pending);
             MazePreviewer.showPreview(plugin, p, origin, opt.mazeSizeX, opt.mazeSizeZ, opt.cellSize, opt.wallHeight, opt.layDown);

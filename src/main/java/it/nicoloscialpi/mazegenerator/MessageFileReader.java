@@ -9,7 +9,7 @@ import java.io.File;
 import java.io.IOException;
 
 public class MessageFileReader {
-    private static YamlConfiguration yamlConfiguration;
+    private static volatile YamlConfiguration yamlConfiguration;
 
     public static void read(JavaPlugin plugin, String configName) {
         File file = new File(plugin.getDataFolder(), configName);
@@ -19,19 +19,28 @@ public class MessageFileReader {
             file.getParentFile().mkdirs();
             plugin.saveResource(configName, false);
         }
-        yamlConfiguration = new YamlConfiguration();
+        YamlConfiguration newConfig = new YamlConfiguration();
         try {
-            yamlConfiguration.load(file);
+            newConfig.load(file);
         } catch (IOException | InvalidConfigurationException e) {
             plugin.getLogger().severe(e.getMessage());
+            return;
         }
+        yamlConfiguration = newConfig;
     }
 
     public static String getMessage(String key) {
-        String prefix = yamlConfiguration.getString("plugin-prefix", "&7[MazeGenerator] &r");
-        String message = yamlConfiguration.getString(key, "");
-        String colored = ChatColor.translateAlternateColorCodes('&', prefix + message);
-        return colored;
+        YamlConfiguration config = yamlConfiguration;
+        if (config == null) {
+            return "";
+        }
+        String prefix = config.getString("plugin-prefix", "&7[MazeGenerator] &r");
+        String message = config.getString(key, "");
+        return ChatColor.translateAlternateColorCodes('&', prefix + message);
+    }
+
+    public static void reload(JavaPlugin plugin, String configName) {
+        read(plugin, configName);
     }
 }
 

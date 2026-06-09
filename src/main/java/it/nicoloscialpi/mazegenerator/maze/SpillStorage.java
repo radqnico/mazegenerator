@@ -35,15 +35,19 @@ public class SpillStorage {
             int cx = (int) (chunkKey >> 32);
             int cz = (int) chunkKey;
             int[] raw = buffer.raw();
+            StringBuilder sb = new StringBuilder();
             for (int i = 0; i < buffer.size(); i += 4) {
                 int worldX = raw[i];
                 int worldY = raw[i + 1];
                 int worldZ = raw[i + 2];
                 int type = raw[i + 3];
-                String line = "- [" + cx + ", " + cz + ", " + worldX + ", " + worldY + ", " + worldZ + ", " + type + "]\n";
-                writer.write(line);
-                fileBytes += line.getBytes(StandardCharsets.UTF_8).length;
+                sb.append("-").append(" [").append(cx).append(", ").append(cz).append(", ")
+                  .append(worldX).append(", ").append(worldY).append(", ").append(worldZ)
+                  .append(", ").append(type).append("]\n");
             }
+            String content = sb.toString();
+            writer.write(content);
+            fileBytes += content.getBytes(StandardCharsets.UTF_8).length;
             writer.flush();
             return true;
         } catch (IOException e) {
@@ -107,7 +111,12 @@ public class SpillStorage {
     }
 
     private long estimateSpillBytes(CellGroupBuffer buffer) {
-        int perLine = 50;
-        return (long) perLine * buffer.cellCount();
+        // Estimate: "- [cx, cz, x, y, z, type]\n" where each number can be up to 11 chars (INT_MAX)
+        // Average case: ~40-50 bytes per cell entry, but be conservative
+        int cells = buffer.cellCount();
+        // Each line: "- [" + chunkX + ", " + chunkZ + ", " + worldX + ", " + worldY + ", " + worldZ + ", " + type + "]\n"
+        // Maximum: "- [-2147483648, -2147483648, -2147483648, -2147483648, -2147483648, 255]\n" = ~80 chars
+        // But typically much smaller. Use 70 as estimate to be safe
+        return (long) 70 * cells;
     }
 }

@@ -10,11 +10,15 @@ import java.util.Objects;
 
 public final class MazeGeneratorPlugin extends JavaPlugin {
 
-    public static MazeGeneratorPlugin plugin;
+    private static volatile MazeGeneratorPlugin plugin;
+
+    public static MazeGeneratorPlugin getInstance() {
+        return plugin;
+    }
 
     @Override
     public void onEnable() {
-        plugin = this;
+        MazeGeneratorPlugin.plugin = this;
         saveDefaultConfig();
         // Register command executor and tab-completer
         MazeCommand mazeCommand = new MazeCommand(this);
@@ -34,5 +38,6 @@ public final class MazeGeneratorPlugin extends JavaPlugin {
         // Cancel tasks and unregister listeners
         getServer().getScheduler().cancelTasks(this);
         LoadBalancer.shutdown();
+        plugin = null;
     }
 }

@@ -16,7 +16,8 @@ public final class TerrainHeightMap {
                                         int wallHeight) {
         int[][] heights = new int[sizeN][sizeM];
         int minY = world.getMinHeight();
-        int maxY = world.getMaxHeight() - wallHeight - 1;
+        int maxY = world.getMaxHeight() - 1;
+        int effectiveMaxY = Math.min(maxY, baseY + wallHeight);
         boolean hasGround = false;
 
         // Initial sampling at cell center
@@ -28,7 +29,7 @@ public final class TerrainHeightMap {
                 if (h > world.getMinHeight()) {
                     hasGround = true;
                 }
-                h = Math.min(Math.max(minY, h), maxY);
+                h = Math.min(Math.max(minY, h), effectiveMaxY);
                 heights[r][c] = h;
             }
         }
@@ -47,7 +48,7 @@ public final class TerrainHeightMap {
                     if (c > 0) h = clampStep(h, heights[r][c - 1]);
                     if (r < sizeN - 1) h = clampStep(h, heights[r + 1][c]);
                     if (c < sizeM - 1) h = clampStep(h, heights[r][c + 1]);
-                    h = Math.min(Math.max(minY, h), maxY);
+                    h = Math.min(Math.max(minY, h), effectiveMaxY);
                     heights[r][c] = h;
                 }
             }

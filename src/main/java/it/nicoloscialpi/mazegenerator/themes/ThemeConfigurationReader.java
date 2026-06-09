@@ -45,8 +45,8 @@ public class ThemeConfigurationReader {
             result.put(keyL0, theme);
             Set<String> keysL1 = yamlL0.getKeys(false);
             for (String keyL1 : keysL1) {
-                if (!(keyL1.equals("floor") || keyL1.equals("wall") || keyL1.equals("top"))) {
-                    plugin.getLogger().warning("Configuration section '" + keyL1 + "' is not one of [floor,wall,top], skipping");
+                if (!(keyL1.equals("floor") || keyL1.equals("wall") || keyL1.equals("top") || keyL1.equals("ladder"))) {
+                    plugin.getLogger().warning("Configuration section '" + keyL1 + "' is not one of [floor,wall,top,ladder], skipping");
                     continue;
                 }
 

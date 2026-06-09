@@ -44,8 +44,7 @@ public class MazeStreamPlacer implements JobProducer {
     private final boolean hasExits;
     private final int[][] cellHeights;
     private final boolean layDown;
-
-    private final boolean deferWallFill = MazeGeneratorPlugin.plugin.getConfig().getBoolean("defer-wall-fill", false);
+    private final boolean deferWallFill;
     private final long pendingMemoryBudgetBytes;
     private final SpillStorage spillStorage;
     private final long totalCells;
@@ -62,8 +61,8 @@ public class MazeStreamPlacer implements JobProducer {
                             int cellSize,
                             boolean closed,
                             boolean isHollow,
-                            int sizeN,
-                            int sizeM,
+                            int requestedCellsN,
+                            int requestedCellsM,
                             int additionalExits,
                             double erosion,
                             boolean hasRoom,
@@ -81,8 +80,6 @@ public class MazeStreamPlacer implements JobProducer {
         this.cellSize = cellSize;
         this.closed = closed;
         this.hollow = isHollow;
-        this.sizeN = SizeParser.ensureOdd(sizeN);
-        this.sizeM = SizeParser.ensureOdd(sizeM);
         this.additionalExits = additionalExits;
         this.erosion = erosion;
         this.hasRoom = hasRoom;
@@ -90,17 +87,24 @@ public class MazeStreamPlacer implements JobProducer {
         this.roomSizeZ = roomSizeZ;
         this.hasExits = hasExits;
         this.layDown = layDown;
+        this.deferWallFill = MazeGeneratorPlugin.getInstance().getConfig().getBoolean("defer-wall-fill", false);
+
+        this.generator = new IncrementalMazeGenerator(
+                Math.max(1, requestedCellsN), Math.max(1, requestedCellsM),
+                additionalExits, erosion, hasRoom, roomSizeX, roomSizeZ, hasExits);
+        this.sizeN = generator.getGridSizeN();
+        this.sizeM = generator.getGridSizeM();
         this.pendingMemoryBudgetBytes = SizeParser.parseToBytes(
-                MazeGeneratorPlugin.plugin.getConfig().getString("placement-max-pending", "8M"),
+                MazeGeneratorPlugin.getInstance().getConfig().getString("placement-max-pending", "8M"),
                 8L * 1024L * 1024L
         );
-        org.bukkit.configuration.ConfigurationSection diskSpill = MazeGeneratorPlugin.plugin.getConfig().getConfigurationSection("disk-spill");
+        org.bukkit.configuration.ConfigurationSection diskSpill = MazeGeneratorPlugin.getInstance().getConfig().getConfigurationSection("disk-spill");
         boolean diskEnabled = diskSpill != null && diskSpill.getBoolean("enabled", false);
         long diskMaxBytes = SizeParser.parseToBytes(
                 diskSpill != null ? diskSpill.getString("max-file-size", "128M") : "128M",
                 128L * 1024L * 1024L
         );
-        Path spillDir = MazeGeneratorPlugin.plugin.getDataFolder().toPath().resolve("spillover");
+        Path spillDir = MazeGeneratorPlugin.getInstance().getDataFolder().toPath().resolve("spillover");
         this.spillStorage = new SpillStorage(diskEnabled, diskMaxBytes,
                 spillDir.resolve("maze-spill-" + System.currentTimeMillis() + ".yml"));
         this.totalCells = (long) this.sizeN * (long) this.sizeM;
@@ -110,17 +114,14 @@ public class MazeStreamPlacer implements JobProducer {
         } else {
             this.cellHeights = null;
         }
-
-        this.generator = new IncrementalMazeGenerator(this.sizeN, this.sizeM,
-                additionalExits, erosion, hasRoom, roomSizeX, roomSizeZ, hasExits);
     }
 
     @Override
     public List<LoadBalancerJob> getJobs() {
-        int batch = Math.max(1, MazeGeneratorPlugin.plugin.getConfig().getInt("jobs-batch-cells", 256));
-        boolean setBlockData = MazeGeneratorPlugin.plugin.getConfig().getBoolean("set-block-data", false);
-        int configuredCellsPerJob = Math.max(1, MazeGeneratorPlugin.plugin.getConfig().getInt("cells-per-job", 16));
-        int maxBlocksPerJob = Math.max(64, MazeGeneratorPlugin.plugin.getConfig().getInt("max-blocks-per-job", 2048));
+        int batch = Math.max(1, MazeGeneratorPlugin.getInstance().getConfig().getInt("jobs-batch-cells", 256));
+        boolean setBlockData = MazeGeneratorPlugin.getInstance().getConfig().getBoolean("set-block-data", false);
+        int configuredCellsPerJob = Math.max(1, MazeGeneratorPlugin.getInstance().getConfig().getInt("cells-per-job", 16));
+        int maxBlocksPerJob = Math.max(64, MazeGeneratorPlugin.getInstance().getConfig().getInt("max-blocks-per-job", 2048));
         int blocksPerCell = Math.max(1, cellSize * cellSize * (height + 1));
         int sizePenalty = Math.max(1, blocksPerCell / 64);
         int adaptiveCellsPerJob = Math.max(1, configuredCellsPerJob / sizePenalty);
@@ -275,7 +276,7 @@ public class MazeStreamPlacer implements JobProducer {
     private long chunkKeyFor(int worldX, int worldZ) {
         int cx = Math.floorDiv(worldX, 16);
         int cz = Math.floorDiv(worldZ, 16);
-        return (((long) cx) << 32) ^ (cz & 0xffffffffL);
+        return ((long) cx << 32) | (cz & 0xFFFFFFFFL);
     }
 
     private void drainSpillFileToJobs(List<LoadBalancerJob> jobs,

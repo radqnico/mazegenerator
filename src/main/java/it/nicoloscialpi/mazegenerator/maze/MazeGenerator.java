@@ -11,7 +11,7 @@ public class MazeGenerator {
     public static final byte HOLE = MazeCellType.HOLE;
     public static final byte ROOM = MazeCellType.ROOM;
 
-    private static long lastGenerationMillis = 0;
+    private static volatile long lastGenerationMillis = 0;
 
     public static long getLastGenerationMillis() {
         return lastGenerationMillis;
@@ -22,8 +22,8 @@ public class MazeGenerator {
     private final Random random = new Random();
 
     public MazeGenerator(int sizeN, int sizeM) {
-        this.sizeN = SizeParser.ensureOdd(sizeN);
-        this.sizeM = SizeParser.ensureOdd(sizeM);
+        this.sizeN = SizeParser.interiorToGridSize(Math.max(1, sizeN));
+        this.sizeM = SizeParser.interiorToGridSize(Math.max(1, sizeM));
     }
 
     public byte[][] generateMaze(int additionalExits, double holeProbability, boolean hasRoom, int roomHeight, int roomWidth, boolean hasExits) {

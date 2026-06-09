@@ -10,7 +10,9 @@ public class CommandArgumentsParser {
 
     public CommandArgumentsParser(ArrayList<String> arguments) {
         argumentValue = new HashMap<>();
-        for (String argument : arguments) {
+        // Defensive copy to avoid modifying the passed list
+        ArrayList<String> argsCopy = new ArrayList<>(arguments);
+        for (String argument : argsCopy) {
             if (argument == null) continue;
             String[] split = argument.split(":", 2);
             if (split.length != 2) continue;

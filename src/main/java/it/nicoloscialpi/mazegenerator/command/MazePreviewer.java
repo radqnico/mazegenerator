@@ -22,7 +22,7 @@ public final class MazePreviewer {
     private MazePreviewer() {}
 
     private static final Map<UUID, BukkitTask> ACTIVE = new HashMap<>();
-    private static final double MAX_VIEW_DISTANCE = 50.0;
+    private static final double MAX_VIEW_DISTANCE = 80.0;
     private static final double MAX_VIEW_DISTANCE_SQ = MAX_VIEW_DISTANCE * MAX_VIEW_DISTANCE;
 
     public static void showPreview(JavaPlugin plugin, Player player, Location origin, int mazeSizeX, int mazeSizeZ, int cellSize, int wallHeight, boolean layDown) {
@@ -132,7 +132,7 @@ public final class MazePreviewer {
             if (w == null) continue;
             if (viewerLoc.getWorld() != null && !viewerLoc.getWorld().equals(w)) continue;
             if (viewerLoc.distanceSquared(loc) > MAX_VIEW_DISTANCE_SQ) continue;
-            w.spawnParticle(Particle.END_ROD, loc.getX(), loc.getY(), loc.getZ(), 1, 0, 0, 0, 0);
+            w.spawnParticle(Particle.END_ROD, loc.getX(), loc.getY(), loc.getZ(), 2, 0, 0, 0, 0);
         }
     }
 
